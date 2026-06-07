@@ -1,22 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { buildWhatsAppShareUrl, type WhatsAppBookingShareInput } from "@/lib/whatsapp";
 
 export function WhatsAppShareButton({
   input,
   label = "Per WhatsApp teilen"
 }: {
-  input: Omit<WhatsAppBookingShareInput, "appOrigin">;
+  input: WhatsAppBookingShareInput;
   label?: string;
 }) {
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
-
-  const shareUrl = buildWhatsAppShareUrl({ ...input, appOrigin: origin || undefined });
+  const shareUrl = buildWhatsAppShareUrl(input);
   const hasValidShareUrl = shareUrl.startsWith("https://wa.me/?text=");
 
   if (!hasValidShareUrl) return null;

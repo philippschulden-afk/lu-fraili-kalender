@@ -12,69 +12,48 @@ export type WhatsAppBookingShareInput = {
   endDate: string;
   isPriority: boolean;
   status: BookingStatus;
-  appOrigin?: string;
 };
 
 export function buildWhatsAppShareUrl(input: WhatsAppBookingShareInput) {
   return `https://wa.me/?text=${encodeURIComponent(buildWhatsAppMessage(input))}`;
 }
 
-export function buildBookingShareLink(bookingId: string, appOrigin?: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || appOrigin || "http://localhost:3000";
-  return `${baseUrl.replace(/\/$/, "")}/buchung/${bookingId}`;
-}
-
 export function buildWhatsAppMessage(input: WhatsAppBookingShareInput) {
   const range = formatGermanRange(input.startDate, input.endDate);
   const priority = input.isPriority ? "Ja" : "Nein";
   const status = statusLabels[input.status];
-  const link = buildBookingShareLink(input.bookingId, input.appOrigin);
 
   if (input.type === "new_request") {
-    return `🏡 Neue Buchungsanfrage Lu Fraili
+    return `Neue Buchungsanfrage Lu Fraili
 
-${input.familyPartyName} möchte Lu Fraili buchen:
+${input.familyPartyName} möchte vom ${range} nach Lu Fraili.
 
-📅 ${range}
-🏷️ P-Zeit: ${priority}
-📌 Status: ${status}
+P-Zeit: ${priority}
 
-Zur Buchung:
-${link}`;
+Falls niemand widerspricht, wird die Buchung in 3 Tagen automatisch bestätigt.`;
   }
 
   if (input.type === "confirmed") {
-    return `🏡 Buchung bestätigt Lu Fraili
+    return `Buchung bestätigt Lu Fraili
 
-${input.familyPartyName} ist bestätigt:
+${input.familyPartyName} ist vom ${range} in Lu Fraili eingetragen.
 
-📅 ${range}
-🏷️ P-Zeit: ${priority}
-
-Zur Buchung:
-${link}`;
+P-Zeit: ${priority}`;
   }
 
   if (input.type === "cancelled") {
-    return `🏡 Buchung storniert Lu Fraili
+    return `Buchung storniert Lu Fraili
 
-Die Buchung von ${input.familyPartyName} wurde storniert:
+${input.familyPartyName} hat seinen Aufenthalt vom ${range} storniert.
 
-📅 ${range}
-🏷️ P-Zeit: ${priority}
-
-Zur Buchung:
-${link}`;
+P-Zeit: ${priority}`;
   }
 
-  return `🏡 Lu Fraili Buchung
+  return `Lu Fraili Buchung
 
 ${input.familyPartyName}
 
-📅 ${range}
-🏷️ P-Zeit: ${priority}
-📌 Status: ${status}
-
-Zur Buchung:
-${link}`;
+${range}
+P-Zeit: ${priority}
+Status: ${status}`;
 }
