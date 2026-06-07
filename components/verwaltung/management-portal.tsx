@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { formatGermanDate } from "@/lib/date-format";
 import { findBookingConflicts } from "@/lib/conflicts";
-import { calculateBookingDays } from "@/lib/rules";
+import { calculateBookingDays, isLessThanOneMonthBeforeStart } from "@/lib/rules";
 import { statusLabels } from "@/lib/status";
-import type { Booking, BookingStatus, FamilyParty, Objection, Profile, UserRole } from "@/lib/types";
+import type { Booking, BookingStatus, FamilyParty, Objection, PriorityDayForfeiture, Profile, UserRole } from "@/lib/types";
 
 type PartyRow = FamilyParty & {
   userCount: number;
@@ -23,6 +23,7 @@ type ManagementPortalProps = {
   initialProfiles: Profile[];
   initialBookings: Booking[];
   initialObjections: Objection[];
+  initialForfeitures: PriorityDayForfeiture[];
   septemberRuleEnabled: boolean;
   year: number;
 };
@@ -42,6 +43,7 @@ export function ManagementPortal({
   initialProfiles,
   initialBookings,
   initialObjections,
+  initialForfeitures,
   septemberRuleEnabled,
   year
 }: ManagementPortalProps) {
@@ -49,6 +51,7 @@ export function ManagementPortal({
   const [profiles, setProfiles] = useState(initialProfiles);
   const [bookings, setBookings] = useState(initialBookings);
   const [objections] = useState(initialObjections);
+  const [forfeitures] = useState(initialForfeitures);
   const [septemberEnabled, setSeptemberEnabled] = useState(septemberRuleEnabled);
   const [messages, setMessages] = useState<Record<string, Message>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -185,6 +188,16 @@ export function ManagementPortal({
     const booking = bookings.find((item) => item.id === bookingId);
     if (!booking) return;
     const payload = { ...booking, status: statusOverride ?? booking.status };
+    const originalBooking = initialBookings.find((item) => item.id === bookingId);
+    if (originalBooking?.is_priority && originalBooking.status === "bestaetigt" && isLessThanOneMonthBeforeStart(originalBooking.start_date)) {
+      const dateChanged = originalBooking.start_date !== payload.start_date || originalBooking.end_date !== payload.end_date;
+      const pRemoved = !payload.is_priority;
+      const reduced = payload.is_priority && calculateBookingDays(payload.start_date, payload.end_date) < calculateBookingDays(originalBooking.start_date, originalBooking.end_date);
+      const cancelled = payload.status === "storniert";
+      if ((dateChanged || pRemoved || reduced || cancelled) && !window.confirm("Diese bestätigte P-Zeit beginnt in weniger als einem Monat. Wenn sie jetzt geändert wird, können die ursprünglich reservierten P-Tage verfallen.")) {
+        return;
+      }
+    }
     setSavingKey(`booking-${bookingId}`);
     const response = await fetch(`/api/verwaltung/bookings/${bookingId}`, {
       method: "PATCH",
@@ -257,6 +270,12 @@ export function ManagementPortal({
     return bookings
       .filter((booking) => booking.family_party_id === partyId && booking.is_priority && booking.status === "bestaetigt" && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear)
       .reduce((sum, booking) => sum + calculateBookingDays(booking.start_date, booking.end_date), 0);
+  }
+
+  function forfeitedDaysForParty(partyId: string) {
+    return forfeitures
+      .filter((forfeiture) => forfeiture.family_party_id === partyId && forfeiture.year === priorityYear)
+      .reduce((sum, forfeiture) => sum + forfeiture.forfeited_days, 0);
   }
 
   return (
@@ -446,14 +465,21 @@ export function ManagementPortal({
           <TextInput label="Jahr" value={String(priorityYear)} type="number" onChange={(value) => setPriorityYear(Number(value) || year)} />
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <p className="rounded-lg bg-blue-50 p-4 text-blue-950 lg:col-span-2">
+            Verfallene P-Tage entstehen, wenn eine bestätigte P-Zeit weniger als einen Monat vor Beginn storniert oder wesentlich geändert wurde.
+          </p>
           {familyParties.map((party) => {
-            const used = pDaysUsedForParty(party.id);
+            const activeUsed = pDaysUsedForParty(party.id);
+            const forfeitedUsed = forfeitedDaysForParty(party.id);
+            const used = activeUsed + forfeitedUsed;
             const confirmedPriorityBookings = bookings.filter((booking) => booking.family_party_id === party.id && booking.is_priority && booking.status === "bestaetigt" && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear);
             return (
               <div key={party.id} className="rounded-lg border border-teal-100 p-4">
                 <h3 className="text-xl font-bold">{party.name}</h3>
-                <p className="mt-2 text-lg">P-Tage verwendet: <strong>{used}</strong></p>
-                <p className="text-lg">P-Tage verbleibend: <strong>{Math.max(42 - used, 0)}</strong></p>
+                <p className="mt-2 text-lg">Aktive P-Tage: <strong>{activeUsed}</strong></p>
+                <p className="text-lg">Verfallene P-Tage: <strong>{forfeitedUsed}</strong></p>
+                <p className="text-lg">Verbraucht gesamt: <strong>{used} / 42</strong></p>
+                <p className="text-lg">Verbleibend: <strong>{Math.max(42 - used, 0)}</strong></p>
                 <div className="mt-3 space-y-1">
                   {confirmedPriorityBookings.length ? confirmedPriorityBookings.map((booking) => (
                     <p key={booking.id} className="rounded bg-paper p-2">{formatGermanDate(booking.start_date)} bis {formatGermanDate(booking.end_date)}: {calculateBookingDays(booking.start_date, booking.end_date)} Tage</p>

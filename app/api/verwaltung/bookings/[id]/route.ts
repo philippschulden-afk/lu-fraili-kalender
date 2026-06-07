@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
 import { getSchlichterContext } from "@/lib/schlichter";
+import { createPriorityDayForfeitureIfNeeded } from "@/lib/priority-forfeitures";
 import {
   calculateBookingDays,
   checkOverlaps,
   getPriorityDaysUsed,
+  shouldForfeitPriorityDaysOnCancel,
+  shouldForfeitPriorityDaysOnChange,
   validateMaxSinglePriorityBooking,
   validatePriorityQuota
 } from "@/lib/rules";
@@ -122,6 +125,46 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       message: "E-Mail wegen geänderter Buchung versendet.",
       created_by: context.user?.id ?? null
     });
+  }
+
+  const shouldForfeitOnCancel = status === "storniert" && shouldForfeitPriorityDaysOnCancel(currentBooking);
+  const shouldForfeitOnChange = shouldForfeitPriorityDaysOnChange({
+    original: currentBooking,
+    updated: {
+      start_date: startDate,
+      end_date: endDate,
+      is_priority: Boolean(body.is_priority)
+    }
+  });
+  const forfeitureReason = shouldForfeitOnCancel
+    ? "P-Zeit weniger als einen Monat vor Beginn storniert"
+    : shouldForfeitOnChange
+      ? "P-Zeit weniger als einen Monat vor Beginn geändert"
+      : null;
+
+  if (forfeitureReason) {
+    const forfeiture = await createPriorityDayForfeitureIfNeeded({
+      admin,
+      booking: currentBooking,
+      reason: forfeitureReason,
+      createdBy: context.user?.id ?? null
+    });
+    if (forfeiture.created) {
+      const allRecipients = await getNotificationRecipients(admin);
+      await sendBookingNotification({
+        to: allRecipients,
+        type: "priority_days_forfeited",
+        booking: currentBooking,
+        partyName: currentBooking.family_parties?.name ?? "Familienpartei",
+        forfeitedDays: forfeiture.forfeitedDays
+      });
+      await admin.from("booking_events").insert({
+        booking_id: params.id,
+        event_type: "email_priority_days_forfeited",
+        message: "E-Mail wegen verfallener P-Tage versendet.",
+        created_by: context.user?.id ?? null
+      });
+    }
   }
 
   return NextResponse.json({

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Booking, Profile } from "@/lib/types";
-import { checkCancellationWarning } from "@/lib/rules";
+import { checkCancellationWarning, shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
 
 export function BookingActions({ booking, profile }: { booking: Booking; profile: Profile }) {
   const [reason, setReason] = useState("");
@@ -16,6 +16,7 @@ export function BookingActions({ booking, profile }: { booking: Booking; profile
     isPriority: booking.is_priority,
     status: booking.status
   });
+  const forfeitureWarningApplies = shouldForfeitPriorityDaysOnCancel(booking);
 
   async function post(url: string, body: unknown) {
     setBusy(true);
@@ -57,7 +58,15 @@ export function BookingActions({ booking, profile }: { booking: Booking; profile
           {cancellationWarning ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-amber-950">{cancellationWarning}</p> : null}
           <button
             disabled={busy}
-            onClick={() => post(`/api/bookings/${booking.id}/status`, { status: "storniert" })}
+            onClick={() => {
+              if (
+                forfeitureWarningApplies &&
+                !window.confirm("Diese P-Zeit beginnt in weniger als einem Monat. Wenn du sie jetzt stornierst, werden die P-Tage nicht wieder deinem Kontingent gutgeschrieben. Trotzdem stornieren?")
+              ) {
+                return;
+              }
+              post(`/api/bookings/${booking.id}/status`, { status: "storniert" });
+            }}
             className="focus-ring w-full rounded-lg border border-gray-400 bg-white px-5 py-3 text-lg font-bold text-gray-900"
           >
             Stornieren

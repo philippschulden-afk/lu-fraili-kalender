@@ -1,5 +1,5 @@
-import { addDays, differenceInCalendarDays, isBefore, isWithinInterval, parseISO } from "date-fns";
-import type { Booking } from "@/lib/types";
+import { addDays, addMonths, differenceInCalendarDays, isBefore, parseISO, startOfDay } from "date-fns";
+import type { Booking, PriorityDayForfeiture } from "@/lib/types";
 
 export type RuleBooking = Pick<
   Booking,
@@ -21,10 +21,23 @@ export function getPriorityDaysUsed(bookings: RuleBooking[], familyPartyId: stri
         booking.family_party_id === familyPartyId &&
         booking.is_priority &&
         bookingYear === year &&
-        ["angefragt", "bestaetigt", "klaerung"].includes(booking.status)
+        booking.status === "bestaetigt"
       );
     })
     .reduce((sum, booking) => sum + calculateBookingDays(booking.start_date, booking.end_date), 0);
+}
+
+export function getTotalPriorityDaysUsedIncludingForfeitures(
+  bookings: RuleBooking[],
+  forfeitures: Pick<PriorityDayForfeiture, "family_party_id" | "year" | "forfeited_days">[],
+  familyPartyId: string,
+  year: number
+) {
+  const activePriorityDays = getPriorityDaysUsed(bookings, familyPartyId, year);
+  const forfeitedDays = forfeitures
+    .filter((forfeiture) => forfeiture.family_party_id === familyPartyId && forfeiture.year === year)
+    .reduce((sum, forfeiture) => sum + forfeiture.forfeited_days, 0);
+  return activePriorityDays + forfeitedDays;
 }
 
 export function validatePriorityQuota(input: {
@@ -110,7 +123,7 @@ export function checkSeptemberWarning(input: {
   const touchesSeptember = [start.getFullYear(), end.getFullYear()].some((year) => {
     const first = new Date(year, 8, 1);
     const last = new Date(year, 8, 30);
-    return isWithinInterval(first, { start, end }) || isWithinInterval(last, { start, end }) || (start <= first && end >= last);
+    return start <= last && first <= end;
   });
 
   const party = input.familyPartyName?.toLowerCase();
@@ -132,6 +145,54 @@ export function checkCancellationWarning(input: {
     return "Diese P-Zeit wird weniger als zwei Monate vor Beginn storniert. Bitte nur stornieren, wenn es wirklich notwendig ist.";
   }
   return null;
+}
+
+export function isLessThanOneMonthBeforeStart(startDate: string, now: Date = new Date()) {
+  const start = startOfDay(parseISO(startDate));
+  const today = startOfDay(now);
+  const oneMonthBeforeStart = addMonths(start, -1);
+  return today > oneMonthBeforeStart && today <= start;
+}
+
+export function shouldForfeitPriorityDaysOnCancel(
+  booking: Pick<Booking, "start_date" | "end_date" | "is_priority" | "status">,
+  now: Date = new Date()
+) {
+  return booking.is_priority && booking.status === "bestaetigt" && isLessThanOneMonthBeforeStart(booking.start_date, now);
+}
+
+export function shouldForfeitPriorityDaysOnChange(input: {
+  original: Pick<Booking, "start_date" | "end_date" | "is_priority" | "status">;
+  updated: Pick<Booking, "start_date" | "end_date" | "is_priority">;
+  now?: Date;
+}) {
+  if (!input.original.is_priority || input.original.status !== "bestaetigt") return false;
+  if (!isLessThanOneMonthBeforeStart(input.original.start_date, input.now ?? new Date())) return false;
+
+  const originalDays = calculateBookingDays(input.original.start_date, input.original.end_date);
+  const updatedDays = input.updated.is_priority
+    ? calculateBookingDays(input.updated.start_date, input.updated.end_date)
+    : 0;
+
+  return (
+    !input.updated.is_priority ||
+    input.original.start_date !== input.updated.start_date ||
+    input.original.end_date !== input.updated.end_date ||
+    updatedDays < originalDays
+  );
+}
+
+export function calculateForfeitedPriorityDays(booking: Pick<Booking, "start_date" | "end_date" | "is_priority">) {
+  if (!booking.is_priority) return 0;
+  return calculateBookingDays(booking.start_date, booking.end_date);
+}
+
+export function hasExistingForfeiture(
+  forfeitures: Pick<PriorityDayForfeiture, "booking_id" | "reason">[],
+  bookingId: string,
+  reason: string
+) {
+  return forfeitures.some((forfeiture) => forfeiture.booking_id === bookingId && forfeiture.reason === reason);
 }
 
 export function canAutoConfirmBooking(input: {

@@ -113,6 +113,12 @@ export function NewBookingForm({
             <span className="text-gray-700">P-Zeit bedeutet: Diese Zeit ist Teil deiner sechs Wochen Vorrangzeit pro Jahr.</span>
           </span>
         </label>
+        {isPriority ? (
+          <p className="rounded-lg bg-blue-50 p-4 text-blue-950">
+            <strong>Hinweis zur P-Zeit:</strong><br />
+            Wenn eine bestätigte P-Zeit weniger als einen Monat vor Beginn storniert oder wesentlich geändert wird, werden die P-Tage nicht wieder gutgeschrieben.
+          </p>
+        ) : null}
         <label className="flex gap-3 rounded-lg border border-teal-100 p-4">
           <input className="mt-1 h-6 w-6" type="checkbox" checked={sharedStayAllowed} onChange={(e) => setSharedStayAllowed(e.target.checked)} />
           <span>

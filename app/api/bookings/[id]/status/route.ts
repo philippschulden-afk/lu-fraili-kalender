@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
+import { createPriorityDayForfeitureIfNeeded } from "@/lib/priority-forfeitures";
+import { shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
 import type { Booking, BookingStatus, Profile } from "@/lib/types";
 
 const allowedStatuses = ["bestaetigt", "storniert", "abgelehnt", "klaerung"] as const;
@@ -81,6 +84,33 @@ export async function POST(request: Request, { params }: { params: { id: string 
       message: status === "storniert" ? "E-Mail wegen Stornierung versendet." : "E-Mail wegen Statusänderung versendet.",
       created_by: user.id
     });
+  }
+
+  if (status === "storniert" && shouldForfeitPriorityDaysOnCancel(booking)) {
+    const admin = createSupabaseAdminClient();
+    const reason = "P-Zeit weniger als einen Monat vor Beginn storniert";
+    const forfeiture = await createPriorityDayForfeitureIfNeeded({
+      admin,
+      booking,
+      reason,
+      createdBy: user.id
+    });
+    if (forfeiture.created) {
+      const recipients = await getNotificationRecipients(admin);
+      await sendBookingNotification({
+        to: recipients,
+        type: "priority_days_forfeited",
+        booking,
+        partyName: booking.family_parties?.name ?? "Familienpartei",
+        forfeitedDays: forfeiture.forfeitedDays
+      });
+      await admin.from("booking_events").insert({
+        booking_id: booking.id,
+        event_type: "email_priority_days_forfeited",
+        message: "E-Mail wegen verfallener P-Tage versendet.",
+        created_by: user.id
+      });
+    }
   }
 
   return NextResponse.json({ ok: true });

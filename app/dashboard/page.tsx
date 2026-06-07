@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { PageShell, requireProfile } from "@/components/page-shell";
 import { BookingCard } from "@/components/booking-card";
-import { getPriorityDaysUsed } from "@/lib/rules";
-import type { Booking } from "@/lib/types";
+import { getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
+import type { Booking, PriorityDayForfeiture } from "@/lib/types";
 
 export default async function DashboardPage() {
   const { supabase, profile } = await requireProfile();
@@ -11,10 +11,12 @@ export default async function DashboardPage() {
     .select("*, family_parties(*)")
     .order("start_date", { ascending: true })
     .returns<Booking[]>();
+  const { data: forfeituresData } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
   const bookings = bookingsData ?? [];
+  const forfeitures = forfeituresData ?? [];
 
   const year = new Date().getFullYear();
-  const used = profile?.family_party_id ? getPriorityDaysUsed(bookings, profile.family_party_id, year) : 0;
+  const used = profile?.family_party_id ? getTotalPriorityDaysUsedIncludingForfeitures(bookings, forfeitures, profile.family_party_id, year) : 0;
   const clarification = bookings.filter((booking) => booking.status === "klaerung");
   const requests = bookings.filter((booking) => booking.status === "angefragt").slice(0, 4);
   const confirmed = bookings.filter((booking) => booking.status === "bestaetigt" && booking.end_date >= new Date().toISOString().slice(0, 10)).slice(0, 4);

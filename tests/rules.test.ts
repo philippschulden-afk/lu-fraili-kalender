@@ -6,7 +6,12 @@ import {
   checkCancellationWarning,
   checkOverlaps,
   checkSeptemberWarning,
+  calculateForfeitedPriorityDays,
   getPriorityDaysUsed,
+  getTotalPriorityDaysUsedIncludingForfeitures,
+  hasExistingForfeiture,
+  isLessThanOneMonthBeforeStart,
+  shouldForfeitPriorityDaysOnCancel,
   validateMaxSinglePriorityBooking,
   validatePriorityQuota
 } from "@/lib/rules";
@@ -125,6 +130,72 @@ describe("booking rules", () => {
         objectionCount: 1,
         now: new Date("2026-06-05T00:00:00Z")
       })
+    ).toBe(false);
+  });
+
+  it("does not forfeit P-days when cancelling more than one month before start", () => {
+    expect(
+      shouldForfeitPriorityDaysOnCancel(
+        {
+          start_date: "2026-08-01",
+          end_date: "2026-08-14",
+          is_priority: true,
+          status: "bestaetigt"
+        },
+        new Date("2026-06-30T00:00:00Z")
+      )
+    ).toBe(false);
+  });
+
+  it("forfeits P-days when cancelling less than one month before start", () => {
+    expect(isLessThanOneMonthBeforeStart("2026-08-01", new Date("2026-07-15T00:00:00Z"))).toBe(true);
+    expect(
+      shouldForfeitPriorityDaysOnCancel(
+        {
+          start_date: "2026-08-01",
+          end_date: "2026-08-14",
+          is_priority: true,
+          status: "bestaetigt"
+        },
+        new Date("2026-07-15T00:00:00Z")
+      )
+    ).toBe(true);
+    expect(calculateForfeitedPriorityDays(bookings[0])).toBe(14);
+  });
+
+  it("counts forfeited days toward the annual quota", () => {
+    expect(
+      getTotalPriorityDaysUsedIncludingForfeitures(
+        bookings,
+        [{ family_party_id: "peter", year: 2026, forfeited_days: 7 }],
+        "peter",
+        2026
+      )
+    ).toBe(21);
+  });
+
+  it("detects duplicate forfeitures for the same booking and reason", () => {
+    expect(
+      hasExistingForfeiture(
+        [{ booking_id: "1", reason: "P-Zeit weniger als einen Monat vor Beginn storniert" }],
+        "1",
+        "P-Zeit weniger als einen Monat vor Beginn storniert"
+      )
+    ).toBe(true);
+  });
+
+  it("never forfeits non-P bookings or unconfirmed P-bookings on cancel", () => {
+    expect(
+      shouldForfeitPriorityDaysOnCancel(
+        { start_date: "2026-08-01", end_date: "2026-08-14", is_priority: false, status: "bestaetigt" },
+        new Date("2026-07-15T00:00:00Z")
+      )
+    ).toBe(false);
+    expect(
+      shouldForfeitPriorityDaysOnCancel(
+        { start_date: "2026-08-01", end_date: "2026-08-14", is_priority: true, status: "angefragt" },
+        new Date("2026-07-15T00:00:00Z")
+      )
     ).toBe(false);
   });
 });

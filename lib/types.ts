@@ -65,3 +65,14 @@ export type AppSetting = {
   key: string;
   value: unknown;
 };
+
+export type PriorityDayForfeiture = {
+  id: string;
+  family_party_id: string;
+  booking_id: string;
+  year: number;
+  forfeited_days: number;
+  reason: string;
+  created_by: string | null;
+  created_at: string;
+};

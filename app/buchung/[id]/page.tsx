@@ -4,7 +4,7 @@ import { PageShell, requireProfile } from "@/components/page-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { BookingActions } from "@/components/booking-actions";
 import { formatGermanDate, formatGermanRange } from "@/lib/date-format";
-import type { Booking, BookingEvent, Objection } from "@/lib/types";
+import type { Booking, BookingEvent, Objection, PriorityDayForfeiture } from "@/lib/types";
 
 type SelectedBookingRow = Pick<
   Booking,
@@ -43,6 +43,11 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
     .lte("start_date", booking.end_date)
     .gte("end_date", booking.start_date)
     .returns<Booking[]>();
+  const { data: forfeituresData } = await supabase
+    .from("priority_day_forfeitures")
+    .select("*")
+    .eq("booking_id", booking.id)
+    .returns<PriorityDayForfeiture[]>();
   const { data: objections = [] } = await supabase
     .from("objections")
     .select("*, profiles(full_name, email)")
@@ -58,6 +63,8 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
   const safeObjections = objections ?? [];
   const safeEvents = events ?? [];
   const overlappingBookings = overlappingBookingsData ?? [];
+  const forfeitures = forfeituresData ?? [];
+  const forfeitedDays = forfeitures.reduce((sum, forfeiture) => sum + forfeiture.forfeited_days, 0);
 
   const remainingDays = booking.notice_period_ends_at
     ? Math.max(differenceInCalendarDays(parseISO(booking.notice_period_ends_at), new Date()), 0)
@@ -84,6 +91,11 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
             {booking.status === "angefragt" && booking.notice_period_ends_at ? (
               <p className="mt-5 rounded-lg bg-blue-50 p-4 text-blue-950">
                 Diese Buchung wird automatisch am {formatGermanDate(booking.notice_period_ends_at)} bestätigt, sofern kein Widerspruch eingeht.
+              </p>
+            ) : null}
+            {forfeitedDays > 0 ? (
+              <p className="mt-5 rounded-lg bg-amber-50 p-4 font-bold text-amber-950">
+                Für diese Buchung sind {forfeitedDays} P-Tage verfallen.
               </p>
             ) : null}
             {booking.comment ? <p className="mt-5 rounded-lg bg-paper p-4">{booking.comment}</p> : null}

@@ -81,7 +81,8 @@ export async function sendBookingNotification(input: {
     | "objection_created"
     | "auto_confirmed"
     | "priority_displacement"
-    | "booking_changed";
+    | "booking_changed"
+    | "priority_days_forfeited";
   booking: Booking;
   partyName: string;
   actorPartyName?: string;
@@ -89,6 +90,7 @@ export async function sendBookingNotification(input: {
   affectedBooking?: Booking;
   reason?: string;
   newStatus?: BookingStatus;
+  forfeitedDays?: number;
 }) {
   const range = formatGermanRange(input.booking.start_date, input.booking.end_date);
   const url = buildAppUrl(`/buchung/${input.booking.id}`);
@@ -167,6 +169,18 @@ export async function sendBookingNotification(input: {
         <p>Nach den Regeln kann eine normale Buchung durch eine gültige P-Zeit verdrängt werden.</p>
         <p>Bitte prüft den Zeitraum und stimmt euch ab.</p>
         <p>Zur neuen Buchung:</p>${button(url)}
+      `
+    });
+  }
+
+  if (input.type === "priority_days_forfeited") {
+    return sendEmail({
+      to: input.to,
+      subject: `P-Tage verfallen: Lu Fraili ${range}`,
+      html: `
+        <p>Die P-Zeit von ${input.partyName} vom ${range} wurde weniger als einen Monat vor Beginn storniert oder geändert.</p>
+        <p>Nach den Regeln werden ${input.forfeitedDays ?? 0} P-Tage nicht wieder gutgeschrieben.</p>
+        <p>Zur Buchung:</p>${button(url)}
       `
     });
   }

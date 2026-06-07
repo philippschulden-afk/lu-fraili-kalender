@@ -2,9 +2,9 @@ import { addDays } from "date-fns";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBookingConflicts } from "@/lib/conflicts";
-import { calculateBookingDays, checkOverlaps, validateMaxSinglePriorityBooking, validatePriorityQuota, getPriorityDaysUsed } from "@/lib/rules";
+import { calculateBookingDays, checkOverlaps, validateMaxSinglePriorityBooking, validatePriorityQuota, getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
-import type { Booking, Profile } from "@/lib/types";
+import type { Booking, PriorityDayForfeiture, Profile } from "@/lib/types";
 
 type CreatedBookingRow = Pick<
   Booking,
@@ -44,10 +44,12 @@ export async function POST(request: Request) {
   if (!startDate || !endDate || days <= 0) return NextResponse.json({ error: "Bitte wähle ein gültiges Start- und Enddatum." }, { status: 400 });
 
   const { data: existingData } = await supabase.from("bookings").select("*, family_parties(*)").returns<Booking[]>();
+  const { data: forfeituresData } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
   const existing = existingData ?? [];
+  const forfeitures = forfeituresData ?? [];
 
   if (body.is_priority) {
-    const usedDays = getPriorityDaysUsed(existing, profile.family_party_id, new Date(`${startDate}T00:00:00`).getFullYear());
+    const usedDays = getTotalPriorityDaysUsedIncludingForfeitures(existing, forfeitures, profile.family_party_id, new Date(`${startDate}T00:00:00`).getFullYear());
     const quota = validatePriorityQuota({ requestedDays: days, usedDays });
     if (!quota.valid) return NextResponse.json({ error: quota.message }, { status: 400 });
     const maxSingle = validateMaxSinglePriorityBooking(days);
