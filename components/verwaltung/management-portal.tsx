@@ -398,6 +398,7 @@ export function ManagementPortal({
             });
             const hasConfirmedOverlap = conflictLabels.some((conflict) => conflict.booking.status === "bestaetigt");
             const hasDisplacement = conflictLabels.some((conflict) => conflict.kind === "priority_displacement");
+            const canDecideBooking = booking.status === "angefragt" && bookingObjections.length > 0;
             return (
               <div key={booking.id} className="rounded-lg border border-teal-100 p-4">
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -430,10 +431,10 @@ export function ManagementPortal({
                   <Info label="Erstellt am" value={formatGermanDate(booking.created_at)} />
                 </div>
                 <p className="mt-3 rounded-lg bg-amber-50 p-3 text-amber-950">Diese Änderung überschreibt die normale Regelprüfung.</p>
-                {booking.status === "klaerung" ? (
+                {canDecideBooking ? (
                   <div className="mt-3 rounded-lg bg-orange-50 p-3 text-orange-950">
                     <p className="font-bold">Widersprüche</p>
-                    {bookingObjections.length ? bookingObjections.map((objection) => <p key={objection.id} className="mt-1">{objection.reason}</p>) : <p className="mt-1">Keine Widersprüche eingetragen.</p>}
+                    {bookingObjections.map((objection) => <p key={objection.id} className="mt-1">{objection.reason}</p>)}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button className="rounded-lg bg-green-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "bestaetigt")}>Trotz Widerspruch bestätigen</button>
                       <button className="rounded-lg bg-red-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "abgelehnt")}>Buchung ablehnen</button>
@@ -442,10 +443,9 @@ export function ManagementPortal({
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button className="rounded-lg bg-teal-700 px-4 py-3 font-bold text-white" disabled={savingKey === `booking-${booking.id}`} onClick={() => saveBooking(booking.id)}>Speichern</button>
-                  <button className="rounded-lg bg-green-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "bestaetigt")}>Bestätigen</button>
-                  <button className="rounded-lg bg-red-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "abgelehnt")}>Ablehnen</button>
-                  <button className="rounded-lg border border-gray-400 bg-white px-4 py-3 font-bold" onClick={() => saveBooking(booking.id, "storniert")}>Stornieren</button>
-                  <button className="rounded-lg bg-teal-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "bestaetigt")}>Klärung als erledigt markieren</button>
+                  {!["storniert", "abgelehnt"].includes(booking.status) ? (
+                    <button className="rounded-lg border border-gray-400 bg-white px-4 py-3 font-bold" onClick={() => saveBooking(booking.id, "storniert")}>Stornieren</button>
+                  ) : null}
                   <button className="rounded-lg border border-red-300 bg-white px-4 py-3 font-bold text-red-800" onClick={() => deleteBooking(booking.id)}>Buchung löschen</button>
                 </div>
                 <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">

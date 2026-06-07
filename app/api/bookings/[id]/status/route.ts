@@ -6,7 +6,7 @@ import { createPriorityDayForfeitureIfNeeded } from "@/lib/priority-forfeitures"
 import { shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
 import type { Booking, BookingStatus, Profile } from "@/lib/types";
 
-const allowedStatuses = ["bestaetigt", "storniert", "abgelehnt", "klaerung"] as const;
+const allowedStatuses = ["bestaetigt", "storniert", "abgelehnt"] as const;
 
 type SelectedBookingRow = Pick<
   Booking,
@@ -55,6 +55,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (status !== "storniert" && !isSchlichter) {
     return NextResponse.json({ error: "Nur Schlichter können diese Änderung vornehmen." }, { status: 403 });
   }
+  if (["bestaetigt", "abgelehnt"].includes(status)) {
+    const { count: objectionCount } = await supabase
+      .from("objections")
+      .select("id", { count: "exact", head: true })
+      .eq("booking_id", booking.id);
+    if (booking.status !== "angefragt" || (objectionCount ?? 0) === 0) {
+      return NextResponse.json({ error: "Diese Buchung kann hier nicht bestätigt oder abgelehnt werden." }, { status: 400 });
+    }
+  }
 
   const update: Record<string, string> = { status };
   if (status === "bestaetigt") update.confirmed_at = new Date().toISOString();
@@ -65,7 +74,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   await supabase.from("booking_events").insert({
     booking_id: booking.id,
     event_type: status,
-    message: status === "klaerung" ? "Klärung als erledigt markiert." : `Status auf ${status} geändert.`,
+    message: `Status auf ${status} geändert.`,
     created_by: user.id
   });
 

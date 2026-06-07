@@ -4,13 +4,14 @@ import { useState } from "react";
 import type { Booking, Profile } from "@/lib/types";
 import { checkCancellationWarning, shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
 
-export function BookingActions({ booking, profile }: { booking: Booking; profile: Profile }) {
+export function BookingActions({ booking, profile, objectionCount }: { booking: Booking; profile: Profile; objectionCount: number }) {
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const isOwnBooking = booking.created_by === profile.user_id;
   const isOtherParty = booking.family_party_id !== profile.family_party_id;
   const isSchlichter = profile.role === "schlichter";
+  const canDecideObjection = isSchlichter && booking.status === "angefragt" && objectionCount > 0;
   const cancellationWarning = checkCancellationWarning({
     startDate: booking.start_date,
     isPriority: booking.is_priority,
@@ -73,16 +74,13 @@ export function BookingActions({ booking, profile }: { booking: Booking; profile
           </button>
         </div>
       ) : null}
-      {isSchlichter ? (
-        <div className="grid gap-3 sm:grid-cols-3">
+      {canDecideObjection ? (
+        <div className="grid gap-3 sm:grid-cols-2">
           <button disabled={busy} onClick={() => post(`/api/bookings/${booking.id}/status`, { status: "bestaetigt" })} className="focus-ring rounded-lg bg-green-700 px-4 py-3 font-bold text-white">
             Bestätigen
           </button>
           <button disabled={busy} onClick={() => post(`/api/bookings/${booking.id}/status`, { status: "abgelehnt" })} className="focus-ring rounded-lg bg-red-700 px-4 py-3 font-bold text-white">
             Ablehnen
-          </button>
-          <button disabled={busy} onClick={() => post(`/api/bookings/${booking.id}/status`, { status: "bestaetigt" })} className="focus-ring rounded-lg bg-teal-700 px-4 py-3 font-bold text-white">
-            Klärung als erledigt markieren
           </button>
         </div>
       ) : null}

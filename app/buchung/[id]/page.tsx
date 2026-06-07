@@ -104,17 +104,16 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
             <h2 className="text-2xl font-bold text-teal-950">Überschneidungen</h2>
             <div className="mt-4 space-y-3">
               {overlappingBookings.length ? overlappingBookings.map((overlap) => (
-                <div key={overlap.id} className="rounded-lg bg-paper p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div key={overlap.id} className="rounded-lg bg-paper p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-lg font-bold">{overlap.family_parties?.name ?? "Familienpartei"}</p>
-                      <p>{formatGermanRange(overlap.start_date, overlap.end_date)}</p>
-                      <p>P-Zeit: {overlap.is_priority ? "Ja" : "Nein"}</p>
+                      <p className="font-bold">{overlap.family_parties?.name ?? "Familienpartei"} · {formatGermanRange(overlap.start_date, overlap.end_date)}</p>
+                      <p className="text-sm text-gray-700">P-Zeit: {overlap.is_priority ? "Ja" : "Nein"}</p>
                       {overlap.comment ? <p className="mt-2 text-gray-700">{overlap.comment}</p> : null}
                     </div>
                     <StatusBadge status={overlap.status} />
                   </div>
-                  <a className="mt-3 inline-block rounded-lg bg-teal-700 px-4 py-3 font-bold text-white" href={`/buchung/${overlap.id}`}>
+                  <a className="mt-2 inline-block rounded-lg bg-teal-700 px-4 py-2 font-bold text-white" href={`/buchung/${overlap.id}`}>
                     Details ansehen
                   </a>
                 </div>
@@ -125,7 +124,7 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
             <h2 className="text-2xl font-bold text-teal-950">Widersprüche</h2>
             <div className="mt-4 space-y-3">
               {safeObjections.length ? safeObjections.map((objection) => (
-                <div key={objection.id} className="rounded-lg bg-orange-50 p-4">
+                <div key={objection.id} className="rounded-lg bg-orange-50 p-3">
                   <p className="font-bold">{objection.profiles?.full_name ?? objection.profiles?.email ?? "Familienmitglied"}</p>
                   <p className="mt-2">{objection.reason}</p>
                 </div>
@@ -144,7 +143,7 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
             </div>
           </div>
         </section>
-        <BookingActions booking={booking} profile={profile} />
+        <BookingActions booking={booking} profile={profile} objectionCount={safeObjections.length} />
       </div>
     </PageShell>
   );

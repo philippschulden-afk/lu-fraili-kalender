@@ -45,7 +45,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const admin = createSupabaseAdminClient();
   await admin.from("objections").insert({ booking_id: booking.id, created_by: user.id, reason });
-  await admin.from("bookings").update({ status: "klaerung" }).eq("id", booking.id);
   await admin.from("booking_events").insert({
     booking_id: booking.id,
     event_type: "objected",

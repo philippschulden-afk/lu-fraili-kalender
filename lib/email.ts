@@ -141,7 +141,7 @@ export async function sendBookingNotification(input: {
       html: `
         <p>Gegen die Buchung von ${input.partyName} vom ${range} wurde widersprochen.</p>
         <p><strong>Grund:</strong><br>${input.reason ?? ""}</p>
-        <p>Die Buchung steht nun auf 'Klärung erforderlich'.</p>
+        <p>Die Schlichter können die Buchung nun bestätigen oder ablehnen.</p>
         <p>Zur Buchung:</p>${button(url)}
       `
     });
