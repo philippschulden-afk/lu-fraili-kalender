@@ -4,12 +4,13 @@ import type { Booking } from "@/lib/types";
 
 export default async function MyBookingsPage() {
   const { supabase, profile } = await requireProfile();
-  const { data: bookings = [] } = await supabase
+  const { data: bookingsData } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .eq("family_party_id", profile?.family_party_id)
     .order("start_date", { ascending: true })
     .returns<Booking[]>();
+  const bookings = bookingsData ?? [];
 
   return (
     <PageShell>

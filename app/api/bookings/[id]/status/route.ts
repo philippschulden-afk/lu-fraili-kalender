@@ -5,6 +5,26 @@ import type { Booking, Profile } from "@/lib/types";
 
 const allowedStatuses = ["bestaetigt", "storniert", "abgelehnt", "klaerung"] as const;
 
+type SelectedBookingRow = Pick<
+  Booking,
+  | "id"
+  | "family_party_id"
+  | "status"
+  | "start_date"
+  | "end_date"
+  | "created_by"
+  | "is_priority"
+  | "shared_stay_allowed"
+  | "comment"
+  | "notice_period_ends_at"
+  | "confirmed_at"
+  | "cancelled_at"
+  | "created_at"
+  | "updated_at"
+> & {
+  family_parties?: Booking["family_parties"];
+};
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createSupabaseServerClient();
   const {
@@ -18,8 +38,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "Unbekannter Status." }, { status: 400 });
   }
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).returns<Profile>().single();
-  const { data: booking } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", params.id).returns<Booking>().single();
+  const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+  const profile = profileData as Profile | null;
+  const { data: bookingData } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", params.id).single();
+  const booking = bookingData as SelectedBookingRow | null;
   if (!profile || !booking) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });
 
   const isOwnBooking = booking.created_by === user.id;
@@ -44,7 +66,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   });
 
   if (status === "storniert") {
-    const { data: recipients = [] } = await supabase.from("profiles").select("email").returns<Pick<Profile, "email">[]>();
+    const { data: recipientsData } = await supabase.from("profiles").select("email").returns<Pick<Profile, "email">[]>();
+    const recipients = recipientsData ?? [];
     await sendCancellationEmail(recipients.map((recipient) => recipient.email), booking, booking.family_parties?.name ?? "Familienpartei");
   }
 

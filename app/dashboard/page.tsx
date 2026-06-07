@@ -6,11 +6,12 @@ import type { Booking } from "@/lib/types";
 
 export default async function DashboardPage() {
   const { supabase, profile } = await requireProfile();
-  const { data: bookings = [] } = await supabase
+  const { data: bookingsData } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .order("start_date", { ascending: true })
     .returns<Booking[]>();
+  const bookings = bookingsData ?? [];
 
   const year = new Date().getFullYear();
   const used = profile?.family_party_id ? getPriorityDaysUsed(bookings, profile.family_party_id, year) : 0;

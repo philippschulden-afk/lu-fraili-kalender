@@ -6,14 +6,34 @@ import { BookingActions } from "@/components/booking-actions";
 import { formatGermanDate, formatGermanRange } from "@/lib/date-format";
 import type { Booking, BookingEvent, Objection } from "@/lib/types";
 
+type SelectedBookingRow = Pick<
+  Booking,
+  | "id"
+  | "family_party_id"
+  | "status"
+  | "start_date"
+  | "end_date"
+  | "created_by"
+  | "is_priority"
+  | "shared_stay_allowed"
+  | "comment"
+  | "notice_period_ends_at"
+  | "confirmed_at"
+  | "cancelled_at"
+  | "created_at"
+  | "updated_at"
+> & {
+  family_parties?: Booking["family_parties"];
+};
+
 export default async function BookingDetailPage({ params }: { params: { id: string } }) {
   const { supabase, profile } = await requireProfile();
-  const { data: booking } = await supabase
+  const { data: bookingData } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .eq("id", params.id)
-    .returns<Booking>()
     .single();
+  const booking = bookingData as SelectedBookingRow | null;
   if (!booking || !profile) notFound();
 
   const { data: objections = [] } = await supabase

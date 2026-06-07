@@ -5,6 +5,26 @@ import { calculateBookingDays, checkOverlaps, validateMaxSinglePriorityBooking, 
 import { sendNewBookingEmail } from "@/lib/email";
 import type { Booking, Profile } from "@/lib/types";
 
+type CreatedBookingRow = Pick<
+  Booking,
+  | "id"
+  | "family_party_id"
+  | "status"
+  | "start_date"
+  | "end_date"
+  | "created_by"
+  | "is_priority"
+  | "shared_stay_allowed"
+  | "comment"
+  | "notice_period_ends_at"
+  | "confirmed_at"
+  | "cancelled_at"
+  | "created_at"
+  | "updated_at"
+> & {
+  family_parties?: Booking["family_parties"];
+};
+
 export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
   const {
@@ -12,7 +32,8 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Bitte zuerst anmelden." }, { status: 401 });
 
-  const { data: profile } = await supabase.from("profiles").select("*, family_parties(*)").eq("user_id", user.id).returns<Profile>().single();
+  const { data: profileData } = await supabase.from("profiles").select("*, family_parties(*)").eq("user_id", user.id).single();
+  const profile = profileData as Profile | null;
   if (!profile?.family_party_id) return NextResponse.json({ error: "Dein Konto ist noch keiner Familienpartei zugeordnet." }, { status: 400 });
 
   const body = await request.json();
@@ -21,7 +42,8 @@ export async function POST(request: Request) {
   const days = calculateBookingDays(startDate, endDate);
   if (!startDate || !endDate || days <= 0) return NextResponse.json({ error: "Bitte wähle ein gültiges Start- und Enddatum." }, { status: 400 });
 
-  const { data: existing = [] } = await supabase.from("bookings").select("*").returns<Booking[]>();
+  const { data: existingData } = await supabase.from("bookings").select("*").returns<Booking[]>();
+  const existing = existingData ?? [];
 
   if (body.is_priority) {
     const usedDays = getPriorityDaysUsed(existing, profile.family_party_id, new Date(`${startDate}T00:00:00`).getFullYear());
@@ -44,7 +66,7 @@ export async function POST(request: Request) {
   if (!overlap.allowed) return NextResponse.json({ error: overlap.message }, { status: 400 });
 
   const noticeEnds = addDays(new Date(), 3).toISOString();
-  const { data: booking, error } = await supabase
+  const { data: bookingData, error } = await supabase
     .from("bookings")
     .insert({
       family_party_id: profile.family_party_id,
@@ -58,8 +80,8 @@ export async function POST(request: Request) {
       notice_period_ends_at: noticeEnds
     })
     .select("*, family_parties(*)")
-    .returns<Booking>()
     .single();
+  const booking = bookingData as CreatedBookingRow | null;
 
   if (error || !booking) return NextResponse.json({ error: "Die Buchungsanfrage konnte nicht gespeichert werden." }, { status: 500 });
 
@@ -70,11 +92,12 @@ export async function POST(request: Request) {
     created_by: user.id
   });
 
-  const { data: recipients = [] } = await supabase
+  const { data: recipientsData } = await supabase
     .from("profiles")
     .select("email")
     .neq("family_party_id", profile.family_party_id)
     .returns<Pick<Profile, "email">[]>();
+  const recipients = recipientsData ?? [];
   await sendNewBookingEmail(recipients.map((recipient) => recipient.email), booking, booking.family_parties?.name ?? "Eine Familienpartei");
 
   return NextResponse.json({ id: booking.id, warning: overlap.warning });

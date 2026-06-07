@@ -4,6 +4,26 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendObjectionEmail } from "@/lib/email";
 import type { Booking, Profile } from "@/lib/types";
 
+type SelectedBookingRow = Pick<
+  Booking,
+  | "id"
+  | "family_party_id"
+  | "status"
+  | "start_date"
+  | "end_date"
+  | "created_by"
+  | "is_priority"
+  | "shared_stay_allowed"
+  | "comment"
+  | "notice_period_ends_at"
+  | "confirmed_at"
+  | "cancelled_at"
+  | "created_at"
+  | "updated_at"
+> & {
+  family_parties?: Booking["family_parties"];
+};
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createSupabaseServerClient();
   const {
@@ -15,8 +35,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const reason = String(body.reason ?? "").trim();
   if (reason.length < 3) return NextResponse.json({ error: "Bitte gib einen kurzen Grund ein." }, { status: 400 });
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).returns<Profile>().single();
-  const { data: booking } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", params.id).returns<Booking>().single();
+  const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+  const profile = profileData as Profile | null;
+  const { data: bookingData } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", params.id).single();
+  const booking = bookingData as SelectedBookingRow | null;
   if (!profile || !booking) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });
   if (booking.family_party_id === profile.family_party_id) return NextResponse.json({ error: "Du kannst deiner eigenen Buchung nicht widersprechen." }, { status: 400 });
   if (booking.status !== "angefragt") return NextResponse.json({ error: "Dieser Buchung kann nicht mehr widersprochen werden." }, { status: 400 });
@@ -31,7 +53,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     created_by: user.id
   });
 
-  const { data: recipients = [] } = await supabase.from("profiles").select("email").eq("role", "schlichter").returns<Pick<Profile, "email">[]>();
+  const { data: recipientsData } = await supabase.from("profiles").select("email").eq("role", "schlichter").returns<Pick<Profile, "email">[]>();
+  const recipients = recipientsData ?? [];
   await sendObjectionEmail(recipients.map((recipient) => recipient.email), booking, booking.family_parties?.name ?? "Familienpartei", reason);
 
   return NextResponse.json({ ok: true });

@@ -15,11 +15,12 @@ const filters = [
 export default async function CalendarPage({ searchParams }: { searchParams: { filter?: string } }) {
   const { supabase, profile } = await requireProfile();
   const selectedFilter = searchParams.filter ?? "alle";
-  const { data: bookings = [] } = await supabase
+  const { data: bookingsData } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .order("start_date", { ascending: true })
     .returns<Booking[]>();
+  const bookings = bookingsData ?? [];
 
   const visibleBookings = bookings.filter((booking) => {
     if (selectedFilter === "bestaetigt") return booking.status === "bestaetigt";

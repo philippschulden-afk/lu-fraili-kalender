@@ -50,10 +50,14 @@ export default async function ManagementPage() {
   const { supabase, profile } = await requireProfile();
   if (profile?.role !== "schlichter") redirect("/dashboard");
 
-  const { data: familyParties = [] } = await supabase.from("family_parties").select("*").order("name").returns<FamilyParty[]>();
-  const { data: profiles = [] } = await supabase.from("profiles").select("*").order("email").returns<Profile[]>();
-  const { data: bookings = [] } = await supabase.from("bookings").select("*").returns<Booking[]>();
-  const { data: setting } = await supabase.from("app_settings").select("value").eq("key", "september_rule_enabled").returns<{ value: boolean }>().single();
+  const { data: familyPartiesData } = await supabase.from("family_parties").select("*").order("name").returns<FamilyParty[]>();
+  const { data: profilesData } = await supabase.from("profiles").select("*").order("email").returns<Profile[]>();
+  const { data: bookingsData } = await supabase.from("bookings").select("*").returns<Booking[]>();
+  const familyParties = familyPartiesData ?? [];
+  const profiles = profilesData ?? [];
+  const bookings = bookingsData ?? [];
+  const { data: settingData } = await supabase.from("app_settings").select("value").eq("key", "september_rule_enabled").single();
+  const setting = settingData as { value: boolean } | null;
   const year = new Date().getFullYear();
 
   return (

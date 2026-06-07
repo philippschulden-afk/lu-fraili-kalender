@@ -11,13 +11,16 @@ export async function GET(request: Request) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const { data: bookings = [] } = await supabase
+  const { data: bookingsData } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .eq("status", "angefragt")
     .returns<Booking[]>();
-  const { data: objections = [] } = await supabase.from("objections").select("*").returns<Objection[]>();
-  const { data: recipients = [] } = await supabase.from("profiles").select("email").returns<Pick<Profile, "email">[]>();
+  const { data: objectionsData } = await supabase.from("objections").select("*").returns<Objection[]>();
+  const { data: recipientsData } = await supabase.from("profiles").select("email").returns<Pick<Profile, "email">[]>();
+  const bookings = bookingsData ?? [];
+  const objections = objectionsData ?? [];
+  const recipients = recipientsData ?? [];
   let confirmed = 0;
 
   for (const booking of bookings) {

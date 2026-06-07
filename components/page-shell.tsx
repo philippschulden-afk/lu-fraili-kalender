@@ -11,12 +11,12 @@ export async function getCurrentProfile() {
 
   if (!user) return { supabase, user: null, profile: null };
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from("profiles")
     .select("*, family_parties(*)")
     .eq("user_id", user.id)
-    .returns<Profile>()
     .single();
+  const profile = profileData as Profile | null;
 
   return { supabase, user, profile };
 }
