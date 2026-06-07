@@ -1,8 +1,9 @@
 import { addDays } from "date-fns";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findBookingConflicts } from "@/lib/conflicts";
 import { calculateBookingDays, checkOverlaps, validateMaxSinglePriorityBooking, validatePriorityQuota, getPriorityDaysUsed } from "@/lib/rules";
-import { sendNewBookingEmail } from "@/lib/email";
+import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
 import type { Booking, Profile } from "@/lib/types";
 
 type CreatedBookingRow = Pick<
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const days = calculateBookingDays(startDate, endDate);
   if (!startDate || !endDate || days <= 0) return NextResponse.json({ error: "Bitte wähle ein gültiges Start- und Enddatum." }, { status: 400 });
 
-  const { data: existingData } = await supabase.from("bookings").select("*").returns<Booking[]>();
+  const { data: existingData } = await supabase.from("bookings").select("*, family_parties(*)").returns<Booking[]>();
   const existing = existingData ?? [];
 
   if (body.is_priority) {
@@ -92,13 +93,51 @@ export async function POST(request: Request) {
     created_by: user.id
   });
 
-  const { data: recipientsData } = await supabase
-    .from("profiles")
-    .select("email")
-    .neq("family_party_id", profile.family_party_id)
-    .returns<Pick<Profile, "email">[]>();
-  const recipients = recipientsData ?? [];
-  await sendNewBookingEmail(recipients.map((recipient) => recipient.email), booking, booking.family_parties?.name ?? "Eine Familienpartei");
+  const recipients = await getNotificationRecipients(supabase, { excludeUserId: user.id });
+  await sendBookingNotification({
+    to: recipients,
+    type: "new_request",
+    booking,
+    partyName: booking.family_parties?.name ?? "Eine Familienpartei"
+  });
+  await supabase.from("booking_events").insert({
+    booking_id: booking.id,
+    event_type: "email_new_request",
+    message: "E-Mail wegen neuer Buchungsanfrage versendet.",
+    created_by: user.id
+  });
+
+  const conflicts = findBookingConflicts({
+    requested: {
+      family_party_id: profile.family_party_id,
+      start_date: startDate,
+      end_date: endDate,
+      is_priority: Boolean(body.is_priority),
+      shared_stay_allowed: Boolean(body.shared_stay_allowed)
+    },
+    existingBookings: existing
+  });
+
+  for (const conflict of conflicts.filter((item) => item.kind === "priority_displacement")) {
+    const affectedRecipients = await getNotificationRecipients(supabase, {
+      familyPartyIds: [conflict.booking.family_party_id]
+    });
+    const schlichterRecipients = await getNotificationRecipients(supabase, { onlySchlichter: true });
+    await sendBookingNotification({
+      to: [...affectedRecipients, ...schlichterRecipients, profile.email],
+      type: "priority_displacement",
+      booking,
+      partyName: booking.family_parties?.name ?? "Familienpartei",
+      affectedBooking: conflict.booking,
+      affectedPartyName: conflict.booking.family_parties?.name ?? "Betroffene Partei"
+    });
+    await supabase.from("booking_events").insert({
+      booking_id: booking.id,
+      event_type: "priority_displacement",
+      message: "P-Zeit überschneidet sich mit normaler Buchung.",
+      created_by: user.id
+    });
+  }
 
   return NextResponse.json({ id: booking.id, warning: overlap.warning });
 }

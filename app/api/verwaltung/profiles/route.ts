@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getNotificationRecipients, sendUnassignedUserEmail } from "@/lib/email";
 import { getSchlichterContext } from "@/lib/schlichter";
 import type { Profile, UserRole } from "@/lib/types";
 
@@ -59,6 +60,10 @@ export async function POST(request: Request) {
   if (error || !profileData) return NextResponse.json({ error: "Der Nutzer konnte nicht angelegt werden." }, { status: 500 });
 
   const profile = profileData as Profile;
+  if (!profile.family_party_id) {
+    const schlichterRecipients = await getNotificationRecipients(admin, { onlySchlichter: true });
+    await sendUnassignedUserEmail(schlichterRecipients, profile.email);
+  }
   return NextResponse.json({
     message: inviteSent
       ? "Der Nutzer wurde angelegt und eingeladen."

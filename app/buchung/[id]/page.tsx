@@ -36,6 +36,13 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
   const booking = bookingData as SelectedBookingRow | null;
   if (!booking || !profile) notFound();
 
+  const { data: overlappingBookingsData } = await supabase
+    .from("bookings")
+    .select("*, family_parties(*)")
+    .neq("id", booking.id)
+    .lte("start_date", booking.end_date)
+    .gte("end_date", booking.start_date)
+    .returns<Booking[]>();
   const { data: objections = [] } = await supabase
     .from("objections")
     .select("*, profiles(full_name, email)")
@@ -50,6 +57,7 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
     .returns<BookingEvent[]>();
   const safeObjections = objections ?? [];
   const safeEvents = events ?? [];
+  const overlappingBookings = overlappingBookingsData ?? [];
 
   const remainingDays = booking.notice_period_ends_at
     ? Math.max(differenceInCalendarDays(parseISO(booking.notice_period_ends_at), new Date()), 0)
@@ -79,6 +87,27 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
               </p>
             ) : null}
             {booking.comment ? <p className="mt-5 rounded-lg bg-paper p-4">{booking.comment}</p> : null}
+          </div>
+          <div className="rounded-lg border border-teal-100 bg-white p-5 shadow-sm">
+            <h2 className="text-2xl font-bold text-teal-950">Überschneidungen</h2>
+            <div className="mt-4 space-y-3">
+              {overlappingBookings.length ? overlappingBookings.map((overlap) => (
+                <div key={overlap.id} className="rounded-lg bg-paper p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-lg font-bold">{overlap.family_parties?.name ?? "Familienpartei"}</p>
+                      <p>{formatGermanRange(overlap.start_date, overlap.end_date)}</p>
+                      <p>P-Zeit: {overlap.is_priority ? "Ja" : "Nein"}</p>
+                      {overlap.comment ? <p className="mt-2 text-gray-700">{overlap.comment}</p> : null}
+                    </div>
+                    <StatusBadge status={overlap.status} />
+                  </div>
+                  <a className="mt-3 inline-block rounded-lg bg-teal-700 px-4 py-3 font-bold text-white" href={`/buchung/${overlap.id}`}>
+                    Details ansehen
+                  </a>
+                </div>
+              )) : <p>Keine Überschneidungen.</p>}
+            </div>
           </div>
           <div className="rounded-lg border border-teal-100 bg-white p-5 shadow-sm">
             <h2 className="text-2xl font-bold text-teal-950">Widersprüche</h2>

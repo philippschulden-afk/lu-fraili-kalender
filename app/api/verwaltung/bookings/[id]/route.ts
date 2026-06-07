@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
 import { getSchlichterContext } from "@/lib/schlichter";
 import {
   calculateBookingDays,
@@ -29,7 +30,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!allowedStatuses.includes(status)) return NextResponse.json({ error: "Bitte wähle einen gültigen Status." }, { status: 400 });
 
   const admin = createSupabaseAdminClient();
-  const { data: existingData } = await admin.from("bookings").select("*").returns<Booking[]>();
+  const { data: existingData } = await admin.from("bookings").select("*, family_parties(*)").returns<Booking[]>();
   const existingBookings = existingData ?? [];
   const currentBooking = existingBookings.find((booking) => booking.id === params.id);
   if (!currentBooking) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });
@@ -71,6 +72,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   if (status === "bestaetigt" && !currentBooking.confirmed_at) update.confirmed_at = new Date().toISOString();
   if (status === "storniert" && !currentBooking.cancelled_at) update.cancelled_at = new Date().toISOString();
+  const bookingChanged =
+    currentBooking.family_party_id !== familyPartyId ||
+    currentBooking.start_date !== startDate ||
+    currentBooking.end_date !== endDate ||
+    currentBooking.is_priority !== Boolean(body.is_priority) ||
+    currentBooking.shared_stay_allowed !== Boolean(body.shared_stay_allowed) ||
+    (currentBooking.comment ?? "") !== (body.comment ? String(body.comment) : "");
+  const statusChanged = currentBooking.status !== status;
 
   const { error } = await admin.from("bookings").update(update).eq("id", params.id);
   if (error) return NextResponse.json({ error: "Die Buchung konnte nicht gespeichert werden." }, { status: 500 });
@@ -83,6 +92,37 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       : "Buchung wurde durch Schlichter geändert.",
     created_by: context.user?.id ?? null
   });
+
+  const updatedBooking = { ...currentBooking, ...update, status } as Booking;
+  const recipients = await getNotificationRecipients(admin, { excludeUserId: context.user?.id ?? null });
+  if (statusChanged) {
+    await sendBookingNotification({
+      to: recipients,
+      type: status === "storniert" ? "cancelled" : "status_changed",
+      booking: updatedBooking,
+      partyName: currentBooking.family_parties?.name ?? "Familienpartei",
+      newStatus: status
+    });
+    await admin.from("booking_events").insert({
+      booking_id: params.id,
+      event_type: "email_status_changed",
+      message: status === "storniert" ? "E-Mail wegen Stornierung versendet." : "E-Mail wegen Statusänderung versendet.",
+      created_by: context.user?.id ?? null
+    });
+  } else if (bookingChanged) {
+    await sendBookingNotification({
+      to: recipients,
+      type: "booking_changed",
+      booking: updatedBooking,
+      partyName: currentBooking.family_parties?.name ?? "Familienpartei"
+    });
+    await admin.from("booking_events").insert({
+      booking_id: params.id,
+      event_type: "email_booking_changed",
+      message: "E-Mail wegen geänderter Buchung versendet.",
+      created_by: context.user?.id ?? null
+    });
+  }
 
   return NextResponse.json({
     message: "Änderung gespeichert.",

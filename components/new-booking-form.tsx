@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatGermanRange } from "@/lib/date-format";
+import { findBookingConflicts, hasBlockingConflict } from "@/lib/conflicts";
 import type { Booking, FamilyParty, Profile } from "@/lib/types";
-import { calculateBookingDays, checkOverlaps } from "@/lib/rules";
+import { calculateBookingDays } from "@/lib/rules";
 
 export function NewBookingForm({
   profile,
@@ -27,8 +29,8 @@ export function NewBookingForm({
   const [busy, setBusy] = useState(false);
   const selectedParty = familyParties.find((party) => party.id === profile.family_party_id);
   const days = startDate && endDate ? calculateBookingDays(startDate, endDate) : 0;
-  const overlapResult = startDate && endDate && profile.family_party_id
-    ? checkOverlaps({
+  const conflictPreview = startDate && endDate && profile.family_party_id
+    ? findBookingConflicts({
         requested: {
           family_party_id: profile.family_party_id,
           start_date: startDate,
@@ -38,7 +40,8 @@ export function NewBookingForm({
         },
         existingBookings
       })
-    : null;
+    : [];
+  const blocksSubmission = hasBlockingConflict(conflictPreview);
 
   const septemberWarning = useMemo(() => {
     if (!septemberRuleEnabled || !startDate || !endDate) return "";
@@ -122,8 +125,40 @@ export function NewBookingForm({
             Diese Buchung ist keine P-Zeit. Sie kann durch eine gültige P-Buchung einer anderen Partei verdrängt werden.
           </p>
         ) : null}
-        {overlapResult?.warning ? <p className="rounded-lg bg-amber-50 p-4 text-amber-950">{overlapResult.warning}</p> : null}
-        {overlapResult && !overlapResult.allowed ? <p className="rounded-lg bg-red-50 p-4 text-red-900">{overlapResult.message}</p> : null}
+        {startDate && endDate ? (
+          <section className="rounded-lg border border-teal-100 bg-paper p-4">
+            <h2 className="text-xl font-bold text-teal-950">Prüfung des Zeitraums</h2>
+            <div className="mt-3 space-y-2">
+              {conflictPreview.length === 0 ? (
+                <p className="rounded-lg bg-green-50 p-3 text-green-900">Für diesen Zeitraum wurden keine Konflikte gefunden.</p>
+              ) : (
+                conflictPreview.map((conflict) => {
+                  const partyName = conflict.booking.family_parties?.name ?? "Familienpartei";
+                  const range = formatGermanRange(conflict.booking.start_date, conflict.booking.end_date);
+                  if (conflict.kind === "confirmed_priority") {
+                    return (
+                      <p key={conflict.booking.id} className="rounded-lg bg-red-50 p-3 text-red-900">
+                        Dieser Zeitraum überschneidet sich mit einer bestätigten P-Zeit von {partyName} vom {range}. Diese Buchung ist nicht möglich.
+                      </p>
+                    );
+                  }
+                  if (conflict.kind === "priority_displacement") {
+                    return (
+                      <p key={conflict.booking.id} className="rounded-lg bg-amber-50 p-3 text-amber-950">
+                        Diese P-Zeit würde eine normale Buchung von {partyName} vom {range} verdrängen. Die betroffene Partei wird informiert.
+                      </p>
+                    );
+                  }
+                  return (
+                    <p key={conflict.booking.id} className="rounded-lg bg-amber-50 p-3 text-amber-950">
+                      Dieser Zeitraum überschneidet sich mit einer normalen Buchung von {partyName} vom {range}. Bitte abstimmen oder 'Gemeinsamer Aufenthalt ist möglich' aktivieren.
+                    </p>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        ) : null}
         {septemberWarning ? <p className="rounded-lg bg-orange-50 p-4 text-orange-950">{septemberWarning}</p> : null}
         <label className="block">
           <span className="text-lg font-bold">Kommentar</span>
@@ -146,7 +181,7 @@ export function NewBookingForm({
         </p>
         <button
           onClick={submit}
-          disabled={busy || !startDate || !endDate || overlapResult?.allowed === false}
+          disabled={busy || !startDate || !endDate || blocksSubmission}
           className="focus-ring mt-6 w-full rounded-lg bg-teal-700 px-6 py-4 text-xl font-bold text-white hover:bg-teal-800 disabled:bg-gray-400"
         >
           Buchungsanfrage senden

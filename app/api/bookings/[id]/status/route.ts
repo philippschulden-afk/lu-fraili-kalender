@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { sendCancellationEmail } from "@/lib/email";
-import type { Booking, Profile } from "@/lib/types";
+import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
+import type { Booking, BookingStatus, Profile } from "@/lib/types";
 
 const allowedStatuses = ["bestaetigt", "storniert", "abgelehnt", "klaerung"] as const;
 
@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!user) return NextResponse.json({ error: "Bitte zuerst anmelden." }, { status: 401 });
 
   const body = await request.json();
-  const status = String(body.status);
+  const status = String(body.status) as BookingStatus;
   if (!allowedStatuses.includes(status as (typeof allowedStatuses)[number])) {
     return NextResponse.json({ error: "Unbekannter Status." }, { status: 400 });
   }
@@ -57,18 +57,30 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (status === "bestaetigt") update.confirmed_at = new Date().toISOString();
   if (status === "storniert") update.cancelled_at = new Date().toISOString();
 
+  const previousStatus = booking.status;
   await supabase.from("bookings").update(update).eq("id", booking.id);
   await supabase.from("booking_events").insert({
     booking_id: booking.id,
     event_type: status,
-    message: status === "klaerung" ? "Klärung als erledigt markiert." : `Status geändert: ${status}`,
+    message: status === "klaerung" ? "Klärung als erledigt markiert." : `Status auf ${status} geändert.`,
     created_by: user.id
   });
 
-  if (status === "storniert") {
-    const { data: recipientsData } = await supabase.from("profiles").select("email").returns<Pick<Profile, "email">[]>();
-    const recipients = recipientsData ?? [];
-    await sendCancellationEmail(recipients.map((recipient) => recipient.email), booking, booking.family_parties?.name ?? "Familienpartei");
+  if (previousStatus !== status) {
+    const recipients = await getNotificationRecipients(supabase, { excludeUserId: user.id });
+    await sendBookingNotification({
+      to: recipients,
+      type: status === "storniert" ? "cancelled" : "status_changed",
+      booking: { ...booking, status },
+      partyName: booking.family_parties?.name ?? "Familienpartei",
+      newStatus: status
+    });
+    await supabase.from("booking_events").insert({
+      booking_id: booking.id,
+      event_type: "email_status_changed",
+      message: status === "storniert" ? "E-Mail wegen Stornierung versendet." : "E-Mail wegen Statusänderung versendet.",
+      created_by: user.id
+    });
   }
 
   return NextResponse.json({ ok: true });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendObjectionEmail } from "@/lib/email";
+import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
 import type { Booking, Profile } from "@/lib/types";
 
 type SelectedBookingRow = Pick<
@@ -49,13 +49,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
   await admin.from("booking_events").insert({
     booking_id: booking.id,
     event_type: "objected",
-    message: `Widerspruch: ${reason}`,
+    message: `Widerspruch angelegt. Grund: ${reason}`,
     created_by: user.id
   });
 
-  const { data: recipientsData } = await supabase.from("profiles").select("email").eq("role", "schlichter").returns<Pick<Profile, "email">[]>();
-  const recipients = recipientsData ?? [];
-  await sendObjectionEmail(recipients.map((recipient) => recipient.email), booking, booking.family_parties?.name ?? "Familienpartei", reason);
+  const recipients = await getNotificationRecipients(admin, { excludeUserId: user.id });
+  await sendBookingNotification({
+    to: recipients,
+    type: "objection_created",
+    booking,
+    partyName: booking.family_parties?.name ?? "Familienpartei",
+    reason
+  });
+  await admin.from("booking_events").insert({
+    booking_id: booking.id,
+    event_type: "email_objection",
+    message: "E-Mail wegen Widerspruch versendet.",
+    created_by: user.id
+  });
 
   return NextResponse.json({ ok: true });
 }

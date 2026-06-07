@@ -6,7 +6,7 @@ import type { Booking, FamilyParty } from "@/lib/types";
 export default async function NewBookingPage() {
   const { supabase, profile } = await requireProfile();
   const { data: familyPartiesData } = await supabase.from("family_parties").select("*").order("name").returns<FamilyParty[]>();
-  const { data: bookingsData } = await supabase.from("bookings").select("*").returns<Booking[]>();
+  const { data: bookingsData } = await supabase.from("bookings").select("*, family_parties(*)").returns<Booking[]>();
   const familyParties = familyPartiesData ?? [];
   const bookings = bookingsData ?? [];
   const { data: settingData } = await supabase.from("app_settings").select("value").eq("key", "september_rule_enabled").single();

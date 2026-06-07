@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatGermanDate } from "@/lib/date-format";
+import { findBookingConflicts } from "@/lib/conflicts";
 import { calculateBookingDays } from "@/lib/rules";
 import { statusLabels } from "@/lib/status";
 import type { Booking, BookingStatus, FamilyParty, Objection, Profile, UserRole } from "@/lib/types";
@@ -371,8 +372,21 @@ export function ManagementPortal({
         <div className="mt-5 space-y-4">
           {filteredBookings.map((booking) => {
             const bookingObjections = objections.filter((objection) => objection.booking_id === booking.id);
+            const conflictLabels = findBookingConflicts({
+              requested: booking,
+              existingBookings: bookings,
+              ignoreBookingId: booking.id
+            });
+            const hasConfirmedOverlap = conflictLabels.some((conflict) => conflict.booking.status === "bestaetigt");
+            const hasDisplacement = conflictLabels.some((conflict) => conflict.kind === "priority_displacement");
             return (
               <div key={booking.id} className="rounded-lg border border-teal-100 p-4">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {hasConfirmedOverlap ? <Label text="Überschneidung" tone="amber" /> : null}
+                  {bookingObjections.length ? <Label text="Widerspruch" tone="orange" /> : null}
+                  {booking.status === "klaerung" ? <Label text="Klärung erforderlich" tone="orange" /> : null}
+                  {hasDisplacement ? <Label text="P-Zeit verdrängt normale Buchung" tone="red" /> : null}
+                </div>
                 <div className="grid gap-3 xl:grid-cols-[150px_150px_220px_120px_150px_1fr] xl:items-end">
                   <TextInput label="Startdatum" value={booking.start_date} type="date" onChange={(value) => updateBooking(booking.id, { start_date: value })} />
                   <TextInput label="Enddatum" value={booking.end_date} type="date" onChange={(value) => updateBooking(booking.id, { end_date: value })} />
@@ -490,6 +504,15 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 
 function Info({ label, value }: { label: string; value: string }) {
   return <div className="rounded-lg bg-paper p-3"><p className="text-sm font-bold text-gray-700">{label}</p><p className="font-bold">{value}</p></div>;
+}
+
+function Label({ text, tone }: { text: string; tone: "amber" | "orange" | "red" }) {
+  const classes = {
+    amber: "bg-amber-100 text-amber-950",
+    orange: "bg-orange-100 text-orange-950",
+    red: "bg-red-100 text-red-900"
+  };
+  return <span className={`rounded-full px-3 py-1 text-sm font-bold ${classes[tone]}`}>{text}</span>;
 }
 
 function MessageLine({ message }: { message: Message }) {

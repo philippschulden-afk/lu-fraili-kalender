@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { canAutoConfirmBooking } from "@/lib/rules";
-import { sendConfirmationEmail } from "@/lib/email";
+import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
 import type { Booking, Objection, Profile } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -17,10 +17,9 @@ export async function GET(request: Request) {
     .eq("status", "angefragt")
     .returns<Booking[]>();
   const { data: objectionsData } = await supabase.from("objections").select("*").returns<Objection[]>();
-  const { data: recipientsData } = await supabase.from("profiles").select("email").returns<Pick<Profile, "email">[]>();
   const bookings = bookingsData ?? [];
   const objections = objectionsData ?? [];
-  const recipients = recipientsData ?? [];
+  const recipients = await getNotificationRecipients(supabase);
   let confirmed = 0;
 
   for (const booking of bookings) {
@@ -39,7 +38,18 @@ export async function GET(request: Request) {
       message: "Buchung wurde automatisch bestätigt.",
       created_by: null
     });
-    await sendConfirmationEmail(recipients.map((recipient) => recipient.email), booking, booking.family_parties?.name ?? "Familienpartei");
+    await sendBookingNotification({
+      to: recipients,
+      type: "auto_confirmed",
+      booking: { ...booking, status: "bestaetigt" },
+      partyName: booking.family_parties?.name ?? "Familienpartei"
+    });
+    await supabase.from("booking_events").insert({
+      booking_id: booking.id,
+      event_type: "email_auto_confirmed",
+      message: "E-Mail wegen automatischer Bestätigung versendet.",
+      created_by: null
+    });
     confirmed += 1;
   }
 
