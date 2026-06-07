@@ -16,18 +16,20 @@ export function WhatsAppShareButton({
     setOrigin(window.location.origin);
   }, []);
 
-  const href = buildWhatsAppShareUrl({ ...input, appOrigin: origin || undefined });
+  const shareUrl = buildWhatsAppShareUrl({ ...input, appOrigin: origin || undefined });
+  const hasValidShareUrl = shareUrl.startsWith("https://wa.me/?text=");
+
+  if (!hasValidShareUrl) return null;
 
   return (
     <div className="rounded-lg border border-teal-100 bg-paper p-3">
-      <a
-        className="focus-ring inline-block rounded-lg border border-teal-700 bg-white px-4 py-3 font-bold text-teal-900"
-        href={href}
-        target="_blank"
-        rel="noreferrer"
+      <button
+        className="focus-ring rounded-lg border border-teal-700 bg-white px-4 py-3 font-bold text-teal-900"
+        type="button"
+        onClick={() => window.open(shareUrl, "_blank", "noopener,noreferrer")}
       >
         {label}
-      </a>
+      </button>
       <p className="mt-2 text-sm text-gray-700">
         Öffnet WhatsApp mit einem vorbereiteten Text. Du kannst ihn vor dem Senden noch ändern.
       </p>
