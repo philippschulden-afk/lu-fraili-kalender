@@ -68,6 +68,15 @@ https://DEINE-VERCEL-DOMAIN.vercel.app/auth/callback
 
 Familienmitglieder melden sich bevorzugt mit Google an. Nach der ersten Anmeldung erscheint ihr Profil in der Verwaltung und kann einer Familienpartei zugeordnet werden.
 
+Für Einladungen und Passwort-Zurücksetzen müssen in Supabase unter `Authentication` → `URL Configuration` zusätzlich diese Redirect URLs erlaubt sein:
+
+```text
+https://YOUR-VERCEL-DOMAIN/auth/callback
+https://YOUR-VERCEL-DOMAIN/auth/passwort-setzen
+http://localhost:3000/auth/callback
+http://localhost:3000/auth/passwort-setzen
+```
+
 ## 4. Umgebungsvariablen
 
 Diese Werte müssen lokal in `.env.local` und bei Vercel als Environment Variables gesetzt werden:

@@ -23,9 +23,11 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   let authUserId: string | null = null;
   let inviteSent = false;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   const inviteResult = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName }
+    data: { full_name: fullName },
+    redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`
   });
 
   if (inviteResult.data.user?.id) {
