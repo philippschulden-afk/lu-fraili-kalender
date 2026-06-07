@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatGermanRange } from "@/lib/date-format";
 import { findBookingConflicts, hasBlockingConflict } from "@/lib/conflicts";
+import { WhatsAppShareButton } from "@/components/whatsapp-share-button";
 import type { Booking, FamilyParty, Profile } from "@/lib/types";
 import { calculateBookingDays } from "@/lib/rules";
 
@@ -27,6 +28,7 @@ export function NewBookingForm({
   const [intention, setIntention] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
   const selectedParty = familyParties.find((party) => party.id === profile.family_party_id);
   const days = startDate && endDate ? calculateBookingDays(startDate, endDate) : 0;
   const conflictPreview = startDate && endDate && profile.family_party_id
@@ -80,7 +82,8 @@ export function NewBookingForm({
       return;
     }
 
-    window.location.href = `/buchung/${result.id}`;
+    setCreatedBookingId(String(result.id));
+    setMessage("");
   }
 
   return (
@@ -185,9 +188,30 @@ export function NewBookingForm({
         <p className="mt-5 text-gray-700">
           Diese Anfrage wird an alle Familienparteien geschickt. Wenn innerhalb von drei Tagen niemand widerspricht, wird sie automatisch bestätigt.
         </p>
+        {createdBookingId ? (
+          <div className="mt-6 rounded-lg bg-green-50 p-4 text-green-900">
+            <p className="text-lg font-bold">Buchungsanfrage wurde erstellt.</p>
+            <div className="mt-3">
+              <WhatsAppShareButton
+                input={{
+                  type: "new_request",
+                  bookingId: createdBookingId,
+                  familyPartyName: selectedParty?.name ?? "Familienpartei",
+                  startDate,
+                  endDate,
+                  isPriority,
+                  status: "angefragt"
+                }}
+              />
+            </div>
+            <a className="mt-3 inline-block rounded-lg bg-teal-700 px-5 py-3 font-bold text-white" href={`/buchung/${createdBookingId}`}>
+              Details ansehen
+            </a>
+          </div>
+        ) : null}
         <button
           onClick={submit}
-          disabled={busy || !startDate || !endDate || blocksSubmission}
+          disabled={busy || !startDate || !endDate || blocksSubmission || Boolean(createdBookingId)}
           className="focus-ring mt-6 w-full rounded-lg bg-teal-700 px-6 py-4 text-xl font-bold text-white hover:bg-teal-800 disabled:bg-gray-400"
         >
           {blocksSubmission ? "Buchung blockiert" : "Buchungsanfrage senden"}
