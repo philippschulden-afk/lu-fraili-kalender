@@ -4,15 +4,16 @@ import {
   bookingsOverlap,
   calculateBookingDays,
   canAutoConfirmBooking,
-  checkCancellationWarning,
   checkOverlaps,
   checkSeptemberWarning,
   calculateForfeitedPriorityDays,
+  calculateForfeitedDaysOnEdit,
   getPriorityDaysUsed,
   getTotalPriorityDaysUsedIncludingForfeitures,
   hasExistingForfeiture,
   isLessThanOneMonthBeforeStart,
   shouldForfeitPriorityDaysOnCancel,
+  shouldForfeitPriorityDaysOnChange,
   validateMaxSinglePriorityBooking,
   validatePriorityQuota
 } from "@/lib/rules";
@@ -218,17 +219,6 @@ describe("booking rules", () => {
     ).toContain("September");
   });
 
-  it("shows a fairness warning for late confirmed priority cancellations", () => {
-    expect(
-      checkCancellationWarning({
-        startDate: "2026-07-01",
-        isPriority: true,
-        status: "bestaetigt",
-        today: new Date("2026-06-01T00:00:00Z")
-      })
-    ).toContain("weniger als zwei Monate");
-  });
-
   it("allows automatic confirmation only after the notice period and without objections", () => {
     expect(
       canAutoConfirmBooking({
@@ -278,6 +268,20 @@ describe("booking rules", () => {
     expect(calculateForfeitedPriorityDays(bookings[0])).toBe(14);
   });
 
+  it("forfeits confirmed P-days for 2026-06-13 when today is 2026-06-07", () => {
+    expect(
+      shouldForfeitPriorityDaysOnCancel(
+        {
+          start_date: "2026-06-13",
+          end_date: "2026-06-20",
+          is_priority: true,
+          status: "bestaetigt"
+        },
+        new Date("2026-06-07T00:00:00Z")
+      )
+    ).toBe(true);
+  });
+
   it("counts forfeited days toward the annual quota", () => {
     expect(
       getTotalPriorityDaysUsedIncludingForfeitures(
@@ -312,5 +316,38 @@ describe("booking rules", () => {
         new Date("2026-07-15T00:00:00Z")
       )
     ).toBe(false);
+  });
+
+  it("does not forfeit original P-days when a late edit only extends the booking", () => {
+    expect(calculateForfeitedDaysOnEdit("2026-06-13", "2026-06-20", "2026-06-13", "2026-06-24")).toBe(0);
+    expect(
+      shouldForfeitPriorityDaysOnChange({
+        original: { start_date: "2026-06-13", end_date: "2026-06-20", is_priority: true, status: "bestaetigt" },
+        updated: { start_date: "2026-06-13", end_date: "2026-06-24", is_priority: true },
+        now: new Date("2026-06-01T00:00:00Z")
+      })
+    ).toBe(false);
+  });
+
+  it("forfeits only original P-days no longer covered when shifted later", () => {
+    expect(calculateForfeitedDaysOnEdit("2026-06-13", "2026-06-20", "2026-06-16", "2026-06-23")).toBe(3);
+  });
+
+  it("forfeits only removed original P-days when shortened", () => {
+    expect(calculateForfeitedDaysOnEdit("2026-06-13", "2026-06-20", "2026-06-13", "2026-06-17")).toBe(3);
+  });
+
+  it("forfeits all original P-days when moved to a non-overlapping range", () => {
+    expect(calculateForfeitedDaysOnEdit("2026-06-13", "2026-06-20", "2026-07-01", "2026-07-08")).toBe(8);
+  });
+
+  it("forfeits all original P-days when P-Zeit is removed less than one month before start", () => {
+    expect(
+      shouldForfeitPriorityDaysOnChange({
+        original: { start_date: "2026-06-13", end_date: "2026-06-20", is_priority: true, status: "bestaetigt" },
+        updated: { start_date: "2026-06-13", end_date: "2026-06-20", is_priority: false },
+        now: new Date("2026-06-01T00:00:00Z")
+      })
+    ).toBe(true);
   });
 });

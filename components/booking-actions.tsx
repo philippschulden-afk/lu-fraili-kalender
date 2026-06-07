@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Booking, Profile } from "@/lib/types";
-import { checkCancellationWarning, shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
+import { priorityCancellationForfeitureWarning, shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
 
 export function BookingActions({ booking, profile, objectionCount }: { booking: Booking; profile: Profile; objectionCount: number }) {
   const [reason, setReason] = useState("");
@@ -12,11 +12,6 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
   const isOtherParty = booking.family_party_id !== profile.family_party_id;
   const isSchlichter = profile.role === "schlichter";
   const canDecideObjection = isSchlichter && booking.status === "angefragt" && objectionCount > 0;
-  const cancellationWarning = checkCancellationWarning({
-    startDate: booking.start_date,
-    isPriority: booking.is_priority,
-    status: booking.status
-  });
   const forfeitureWarningApplies = shouldForfeitPriorityDaysOnCancel(booking);
 
   async function post(url: string, body: unknown) {
@@ -56,13 +51,13 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
       ) : null}
       {(isOwnBooking || isSchlichter) && !["storniert", "abgelehnt"].includes(booking.status) ? (
         <div>
-          {cancellationWarning ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-amber-950">{cancellationWarning}</p> : null}
+          {forfeitureWarningApplies ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-amber-950">{priorityCancellationForfeitureWarning}</p> : null}
           <button
             disabled={busy}
             onClick={() => {
               if (
                 forfeitureWarningApplies &&
-                !window.confirm("Diese P-Zeit beginnt in weniger als einem Monat. Wenn du sie jetzt stornierst, werden die P-Tage nicht wieder deinem Kontingent gutgeschrieben. Trotzdem stornieren?")
+                !window.confirm(`${priorityCancellationForfeitureWarning} Trotzdem stornieren?`)
               ) {
                 return;
               }

@@ -1,4 +1,4 @@
-import { addDays, addMonths, differenceInCalendarDays, isBefore, parseISO, startOfDay } from "date-fns";
+import { addMonths, differenceInCalendarDays, parseISO, startOfDay } from "date-fns";
 import { hasBlockingPriorityConflict } from "@/lib/conflicts";
 import type { Booking, PriorityDayForfeiture } from "@/lib/types";
 
@@ -134,20 +134,8 @@ export function checkSeptemberWarning(input: {
   return "Hinweis: Der September soll bevorzugt Peter und Christoph zur Verfügung stehen. Bitte vorher besonders sorgfältig abstimmen.";
 }
 
-export function checkCancellationWarning(input: {
-  startDate: string;
-  isPriority: boolean;
-  status: string;
-  today?: Date;
-}) {
-  if (!input.isPriority || input.status !== "bestaetigt") return null;
-  const today = input.today ?? new Date();
-  const twoMonthsAhead = addDays(today, 60);
-  if (isBefore(parseISO(input.startDate), twoMonthsAhead)) {
-    return "Diese P-Zeit wird weniger als zwei Monate vor Beginn storniert. Bitte nur stornieren, wenn es wirklich notwendig ist.";
-  }
-  return null;
-}
+export const priorityCancellationForfeitureWarning =
+  "Diese bestätigte P-Zeit beginnt in weniger als einem Monat. Wenn du sie jetzt stornierst, werden die P-Tage nicht wieder deinem Jahreskontingent gutgeschrieben.";
 
 export function isLessThanOneMonthBeforeStart(startDate: string, now: Date = new Date()) {
   const start = startOfDay(parseISO(startDate));
@@ -171,22 +159,45 @@ export function shouldForfeitPriorityDaysOnChange(input: {
   if (!input.original.is_priority || input.original.status !== "bestaetigt") return false;
   if (!isLessThanOneMonthBeforeStart(input.original.start_date, input.now ?? new Date())) return false;
 
-  const originalDays = calculateBookingDays(input.original.start_date, input.original.end_date);
-  const updatedDays = input.updated.is_priority
-    ? calculateBookingDays(input.updated.start_date, input.updated.end_date)
-    : 0;
+  if (!input.updated.is_priority) return true;
 
-  return (
-    !input.updated.is_priority ||
-    input.original.start_date !== input.updated.start_date ||
-    input.original.end_date !== input.updated.end_date ||
-    updatedDays < originalDays
-  );
+  return calculateForfeitedDaysOnEdit(
+    input.original.start_date,
+    input.original.end_date,
+    input.updated.start_date,
+    input.updated.end_date
+  ) > 0;
 }
 
 export function calculateForfeitedPriorityDays(booking: Pick<Booking, "start_date" | "end_date" | "is_priority">) {
   if (!booking.is_priority) return 0;
   return calculateBookingDays(booking.start_date, booking.end_date);
+}
+
+export function calculateForfeitedDaysOnEdit(oldStart: string, oldEnd: string, newStart: string, newEnd: string) {
+  const oldStartDate = parseISO(oldStart);
+  const oldEndDate = parseISO(oldEnd);
+  const newStartDate = parseISO(newStart);
+  const newEndDate = parseISO(newEnd);
+  const oldDays = calculateBookingDays(oldStart, oldEnd);
+
+  if (newEndDate < oldStartDate || newStartDate > oldEndDate) return oldDays;
+
+  const overlapStart = newStartDate > oldStartDate ? newStartDate : oldStartDate;
+  const overlapEnd = newEndDate < oldEndDate ? newEndDate : oldEndDate;
+  const overlappingOriginalDays = calculateBookingDays(
+    toDateOnly(overlapStart),
+    toDateOnly(overlapEnd)
+  );
+
+  return Math.max(oldDays - overlappingOriginalDays, 0);
+}
+
+function toDateOnly(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function hasExistingForfeiture(

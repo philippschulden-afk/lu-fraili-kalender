@@ -10,6 +10,7 @@ export async function createPriorityDayForfeitureIfNeeded(input: {
   booking: Booking;
   reason: string;
   createdBy: string | null;
+  forfeitedDays?: number;
 }) {
   const { data: existingData } = await input.admin
     .from("priority_day_forfeitures")
@@ -20,7 +21,7 @@ export async function createPriorityDayForfeitureIfNeeded(input: {
     return { created: false, forfeitedDays: 0 };
   }
 
-  const forfeitedDays = calculateForfeitedPriorityDays(input.booking);
+  const forfeitedDays = input.forfeitedDays ?? calculateForfeitedPriorityDays(input.booking);
   if (forfeitedDays <= 0) return { created: false, forfeitedDays: 0 };
 
   await input.admin.from("priority_day_forfeitures").insert({

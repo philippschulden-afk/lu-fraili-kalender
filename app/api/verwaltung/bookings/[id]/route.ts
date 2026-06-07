@@ -5,6 +5,7 @@ import { getSchlichterContext } from "@/lib/schlichter";
 import { createPriorityDayForfeitureIfNeeded } from "@/lib/priority-forfeitures";
 import {
   calculateBookingDays,
+  calculateForfeitedDaysOnEdit,
   checkOverlaps,
   getPriorityDaysUsed,
   shouldForfeitPriorityDaysOnCancel,
@@ -141,13 +142,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     : shouldForfeitOnChange
       ? "P-Zeit weniger als einen Monat vor Beginn geändert"
       : null;
+  const forfeitedDays = shouldForfeitOnCancel
+    ? calculateBookingDays(currentBooking.start_date, currentBooking.end_date)
+    : shouldForfeitOnChange
+      ? Boolean(body.is_priority)
+        ? calculateForfeitedDaysOnEdit(currentBooking.start_date, currentBooking.end_date, startDate, endDate)
+        : calculateBookingDays(currentBooking.start_date, currentBooking.end_date)
+      : 0;
 
-  if (forfeitureReason) {
+  if (forfeitureReason && forfeitedDays > 0) {
     const forfeiture = await createPriorityDayForfeitureIfNeeded({
       admin,
       booking: currentBooking,
       reason: forfeitureReason,
-      createdBy: context.user?.id ?? null
+      createdBy: context.user?.id ?? null,
+      forfeitedDays
     });
     if (forfeiture.created) {
       const allRecipients = await getNotificationRecipients(admin);
