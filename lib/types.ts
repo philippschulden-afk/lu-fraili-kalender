@@ -15,7 +15,7 @@ export type FamilyParty = {
 
 export type Profile = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   full_name: string | null;
   email: string;
   family_party_id: string | null;
@@ -59,4 +59,9 @@ export type BookingEvent = {
   message: string;
   created_by: string | null;
   created_at: string;
+};
+
+export type AppSetting = {
+  key: string;
+  value: unknown;
 };
