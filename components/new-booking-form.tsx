@@ -144,7 +144,7 @@ export function NewBookingForm({
                   if (conflict.kind === "confirmed_priority") {
                     return (
                       <p key={conflict.booking.id} className="rounded-lg bg-red-50 p-3 text-red-900">
-                        Dieser Zeitraum überschneidet sich mit einer bestätigten P-Zeit von {partyName} vom {range}. Diese Buchung ist nicht möglich.
+                        Dieser Zeitraum überschneidet sich mit einer bestätigten P-Zeit von {partyName} vom {range}. Eine Buchung für diesen Zeitraum ist nicht möglich.
                       </p>
                     );
                   }
@@ -190,7 +190,7 @@ export function NewBookingForm({
           disabled={busy || !startDate || !endDate || blocksSubmission}
           className="focus-ring mt-6 w-full rounded-lg bg-teal-700 px-6 py-4 text-xl font-bold text-white hover:bg-teal-800 disabled:bg-gray-400"
         >
-          Buchungsanfrage senden
+          {blocksSubmission ? "Buchung blockiert" : "Buchungsanfrage senden"}
         </button>
         {message ? <p className="mt-4 rounded-lg bg-red-50 p-4 text-red-900">{message}</p> : null}
       </aside>

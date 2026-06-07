@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { findBookingConflicts, hasBlockingPriorityConflict, isOverlappingBooking } from "@/lib/conflicts";
 import {
   bookingsOverlap,
   calculateBookingDays,
@@ -16,6 +17,7 @@ import {
   validatePriorityQuota
 } from "@/lib/rules";
 import type { RuleBooking } from "@/lib/rules";
+import type { Booking } from "@/lib/types";
 
 const bookings: RuleBooking[] = [
   {
@@ -37,6 +39,57 @@ const bookings: RuleBooking[] = [
     status: "bestaetigt"
   }
 ];
+
+const conflictBookings = [
+  {
+    id: "confirmed-p",
+    family_party_id: "peter",
+    created_by: "user-1",
+    start_date: "2026-08-01",
+    end_date: "2026-08-14",
+    is_priority: true,
+    shared_stay_allowed: false,
+    status: "bestaetigt",
+    comment: null,
+    notice_period_ends_at: null,
+    confirmed_at: null,
+    cancelled_at: null,
+    created_at: "2026-01-01",
+    updated_at: "2026-01-01"
+  },
+  {
+    id: "requested-p",
+    family_party_id: "christoph",
+    created_by: "user-2",
+    start_date: "2026-09-01",
+    end_date: "2026-09-10",
+    is_priority: true,
+    shared_stay_allowed: false,
+    status: "angefragt",
+    comment: null,
+    notice_period_ends_at: null,
+    confirmed_at: null,
+    cancelled_at: null,
+    created_at: "2026-01-01",
+    updated_at: "2026-01-01"
+  },
+  {
+    id: "normal",
+    family_party_id: "partei-3",
+    created_by: "user-3",
+    start_date: "2026-10-01",
+    end_date: "2026-10-10",
+    is_priority: false,
+    shared_stay_allowed: false,
+    status: "bestaetigt",
+    comment: null,
+    notice_period_ends_at: null,
+    confirmed_at: null,
+    cancelled_at: null,
+    created_at: "2026-01-01",
+    updated_at: "2026-01-01"
+  }
+] satisfies Booking[];
 
 describe("booking rules", () => {
   it("counts booking days including start and end date", () => {
@@ -61,6 +114,68 @@ describe("booking rules", () => {
   it("detects overlapping ranges", () => {
     expect(bookingsOverlap("2026-08-10", "2026-08-20", "2026-08-01", "2026-08-14")).toBe(true);
     expect(bookingsOverlap("2026-08-15", "2026-08-20", "2026-08-01", "2026-08-14")).toBe(false);
+  });
+
+  it("rejects an overlap with any confirmed P booking", () => {
+    const requested = {
+      family_party_id: "peter",
+      start_date: "2026-08-05",
+      end_date: "2026-08-07",
+      is_priority: true,
+      shared_stay_allowed: true
+    };
+
+    expect(isOverlappingBooking(requested, conflictBookings[0])).toBe(true);
+    expect(hasBlockingPriorityConflict({ requested, existingBookings: conflictBookings })).toBe(true);
+    expect(findBookingConflicts({ requested, existingBookings: conflictBookings })[0]).toMatchObject({
+      kind: "confirmed_priority",
+      blocks: true
+    });
+  });
+
+  it("treats overlapping requested P bookings as warning only", () => {
+    const conflicts = findBookingConflicts({
+      requested: {
+        family_party_id: "peter",
+        start_date: "2026-09-05",
+        end_date: "2026-09-07",
+        is_priority: true,
+        shared_stay_allowed: false
+      },
+      existingBookings: conflictBookings
+    });
+
+    expect(hasBlockingPriorityConflict({ requested: { start_date: "2026-09-05", end_date: "2026-09-07" }, existingBookings: conflictBookings })).toBe(false);
+    expect(conflicts[0]).toMatchObject({ kind: "normal_overlap", blocks: false });
+  });
+
+  it("treats overlapping normal bookings as warning only", () => {
+    const conflicts = findBookingConflicts({
+      requested: {
+        family_party_id: "peter",
+        start_date: "2026-10-05",
+        end_date: "2026-10-07",
+        is_priority: false,
+        shared_stay_allowed: false
+      },
+      existingBookings: conflictBookings
+    });
+
+    expect(hasBlockingPriorityConflict({ requested: { start_date: "2026-10-05", end_date: "2026-10-07" }, existingBookings: conflictBookings })).toBe(false);
+    expect(conflicts[0]).toMatchObject({ kind: "normal_overlap", blocks: false });
+  });
+
+  it("allows non-overlapping P bookings", () => {
+    const requested = {
+      family_party_id: "peter",
+      start_date: "2026-11-01",
+      end_date: "2026-11-07",
+      is_priority: true,
+      shared_stay_allowed: false
+    };
+
+    expect(hasBlockingPriorityConflict({ requested, existingBookings: conflictBookings })).toBe(false);
+    expect(findBookingConflicts({ requested, existingBookings: conflictBookings })).toHaveLength(0);
   });
 
   it("blocks overlaps with confirmed priority bookings from another party", () => {

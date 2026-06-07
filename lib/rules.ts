@@ -1,4 +1,5 @@
 import { addDays, addMonths, differenceInCalendarDays, isBefore, parseISO, startOfDay } from "date-fns";
+import { hasBlockingPriorityConflict } from "@/lib/conflicts";
 import type { Booking, PriorityDayForfeiture } from "@/lib/types";
 
 export type RuleBooking = Pick<
@@ -85,16 +86,17 @@ export function checkOverlaps(input: {
     bookingsOverlap(input.requested.start_date, input.requested.end_date, booking.start_date, booking.end_date)
   );
 
-  const blockingPriority = overlaps.find(
-    (booking) => booking.family_party_id !== input.requested.family_party_id && booking.is_priority && booking.status === "bestaetigt"
-  );
+  const blockingPriority = hasBlockingPriorityConflict({
+    requested: input.requested,
+    existingBookings: overlaps
+  });
 
   if (blockingPriority) {
     return {
       allowed: false,
       warning: null,
       overlaps,
-      message: "Dieser Zeitraum überschneidet sich mit einer bestätigten P-Zeit einer anderen Partei."
+      message: "Der Zeitraum ist bereits durch eine bestätigte P-Zeit belegt."
     };
   }
 

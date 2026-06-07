@@ -1,7 +1,7 @@
 import { addDays } from "date-fns";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findBookingConflicts } from "@/lib/conflicts";
+import { findBookingConflicts, hasBlockingPriorityConflict } from "@/lib/conflicts";
 import { calculateBookingDays, checkOverlaps, validateMaxSinglePriorityBooking, validatePriorityQuota, getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
 import type { Booking, PriorityDayForfeiture, Profile } from "@/lib/types";
@@ -47,6 +47,20 @@ export async function POST(request: Request) {
   const { data: forfeituresData } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
   const existing = existingData ?? [];
   const forfeitures = forfeituresData ?? [];
+  const requestedBooking = {
+    family_party_id: profile.family_party_id,
+    start_date: startDate,
+    end_date: endDate,
+    is_priority: Boolean(body.is_priority),
+    shared_stay_allowed: Boolean(body.shared_stay_allowed)
+  };
+
+  if (hasBlockingPriorityConflict({ requested: requestedBooking, existingBookings: existing })) {
+    return NextResponse.json(
+      { error: "Der Zeitraum ist bereits durch eine bestätigte P-Zeit belegt." },
+      { status: 409 }
+    );
+  }
 
   if (body.is_priority) {
     const usedDays = getTotalPriorityDaysUsedIncludingForfeitures(existing, forfeitures, profile.family_party_id, new Date(`${startDate}T00:00:00`).getFullYear());
@@ -57,16 +71,10 @@ export async function POST(request: Request) {
   }
 
   const overlap = checkOverlaps({
-    requested: {
-      family_party_id: profile.family_party_id,
-      start_date: startDate,
-      end_date: endDate,
-      is_priority: Boolean(body.is_priority),
-      shared_stay_allowed: Boolean(body.shared_stay_allowed)
-    },
+    requested: requestedBooking,
     existingBookings: existing
   });
-  if (!overlap.allowed) return NextResponse.json({ error: overlap.message }, { status: 400 });
+  if (!overlap.allowed) return NextResponse.json({ error: overlap.message }, { status: 409 });
 
   const noticeEnds = addDays(new Date(), 3).toISOString();
   const { data: bookingData, error } = await supabase
@@ -110,13 +118,7 @@ export async function POST(request: Request) {
   });
 
   const conflicts = findBookingConflicts({
-    requested: {
-      family_party_id: profile.family_party_id,
-      start_date: startDate,
-      end_date: endDate,
-      is_priority: Boolean(body.is_priority),
-      shared_stay_allowed: Boolean(body.shared_stay_allowed)
-    },
+    requested: requestedBooking,
     existingBookings: existing
   });
 

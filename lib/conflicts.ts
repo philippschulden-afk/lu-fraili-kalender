@@ -6,6 +6,27 @@ export type ConflictInfo = {
   blocks: boolean;
 };
 
+export function isOverlappingBooking(
+  requested: Pick<Booking, "start_date" | "end_date">,
+  existing: Pick<Booking, "start_date" | "end_date">
+) {
+  return existing.start_date <= requested.end_date && existing.end_date >= requested.start_date;
+}
+
+export function hasBlockingPriorityConflict(input: {
+  requested: Pick<Booking, "start_date" | "end_date">;
+  existingBookings: Pick<Booking, "id" | "start_date" | "end_date" | "is_priority" | "status">[];
+  ignoreBookingId?: string;
+}) {
+  return input.existingBookings.some(
+    (booking) =>
+      booking.id !== input.ignoreBookingId &&
+      booking.status === "bestaetigt" &&
+      booking.is_priority &&
+      isOverlappingBooking(input.requested, booking)
+  );
+}
+
 export function findBookingConflicts(input: {
   requested: Pick<Booking, "family_party_id" | "start_date" | "end_date" | "is_priority" | "shared_stay_allowed">;
   existingBookings: Booking[];
@@ -15,16 +36,11 @@ export function findBookingConflicts(input: {
     (booking) =>
       booking.id !== input.ignoreBookingId &&
       ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) &&
-      booking.start_date <= input.requested.end_date &&
-      booking.end_date >= input.requested.start_date
+      isOverlappingBooking(input.requested, booking)
   );
 
   return activeBookings.map((booking): ConflictInfo => {
-    if (
-      booking.family_party_id !== input.requested.family_party_id &&
-      booking.status === "bestaetigt" &&
-      booking.is_priority
-    ) {
+    if (booking.status === "bestaetigt" && booking.is_priority) {
       return { booking, kind: "confirmed_priority", blocks: true };
     }
 
