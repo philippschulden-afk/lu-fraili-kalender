@@ -26,8 +26,16 @@ export default async function DashboardPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <section>
           <h1 className="text-3xl font-bold text-teal-950">Start</h1>
-          <Link className="mt-5 inline-block rounded-lg bg-teal-700 px-6 py-4 text-xl font-bold text-white hover:bg-teal-800" href="/buchung/neu">
-            Neue Buchung anfragen
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <Link className="inline-block rounded-lg bg-teal-700 px-6 py-4 text-center text-xl font-bold text-white hover:bg-teal-800" href={`/jahresplanung?year=${year}`}>
+              Zur Jahresplanung
+            </Link>
+            <Link className="inline-block rounded-lg border border-teal-700 bg-white px-6 py-4 text-center text-xl font-bold text-teal-900 hover:bg-teal-50" href="/buchung/neu">
+              Neue Buchung anfragen
+            </Link>
+          </div>
+          <Link className="mt-3 inline-block font-semibold text-teal-800 underline" href="/kalender">
+            Monatskalender ansehen
           </Link>
           {clarification.length > 0 ? (
             <div className="mt-6 rounded-lg border border-orange-200 bg-orange-50 p-4">

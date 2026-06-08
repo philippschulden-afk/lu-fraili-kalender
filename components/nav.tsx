@@ -12,8 +12,8 @@ export function Nav({ profile }: { profile: Profile | null }) {
           <Link className="rounded-md px-3 py-2 hover:bg-teal-50" href="/dashboard">
             Start
           </Link>
-          <Link className="rounded-md px-3 py-2 hover:bg-teal-50" href="/kalender">
-            Kalender
+          <Link className="rounded-md px-3 py-2 hover:bg-teal-50" href="/jahresplanung">
+            Jahresplanung
           </Link>
           <Link className="rounded-md px-3 py-2 hover:bg-teal-50" href="/buchung/neu">
             Neue Buchung
