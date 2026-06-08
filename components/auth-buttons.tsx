@@ -31,9 +31,14 @@ export function AuthButtons() {
     setResetMessage("");
     const email = String(formData.get("reset_email"));
     const appUrl = getAppUrl(window.location.origin);
+    const redirectTo = buildPasswordSetupRedirectUrl(appUrl);
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Passwort-Reset redirectTo:", redirectTo);
+    }
 
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: buildPasswordSetupRedirectUrl(appUrl)
+      redirectTo
     });
     setResetMessage("Wenn die E-Mail-Adresse bekannt ist, wurde ein Link zum Zurücksetzen verschickt.");
   }

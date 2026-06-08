@@ -96,6 +96,8 @@ TEST_INVITE_EMAIL=testperson@example.com
 
 Der Testknopf erscheint nur in der lokalen Entwicklung und nicht in Produktion.
 
+Hinweis: Einladungen und Passwort-Zurücksetzen leiten bewusst direkt auf `/auth/passwort-setzen`. So können auch Supabase-Links mit Browser-Hash-Tokens sicher verarbeitet werden.
+
 ## 4. Umgebungsvariablen
 
 Diese Werte müssen lokal in `.env.local` und bei Vercel als Environment Variables gesetzt werden:

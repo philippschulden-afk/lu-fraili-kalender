@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function SetPasswordPage() {
-  const supabase = createSupabaseBrowserClient();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [password, setPassword] = useState("");
@@ -15,18 +15,65 @@ export default function SetPasswordPage() {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      if (process.env.NODE_ENV !== "production") {
-        console.log("Passwort setzen Session aktiv:", Boolean(data.session));
+      if (session) {
+        setHasSession(true);
+        setSessionChecked(true);
       }
-      setHasSession(Boolean(data.session));
-      setSessionChecked(true);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Passwort setzen Auth-Ereignis:", event, "Session aktiv:", Boolean(session));
+      }
     });
+
+    initializeSessionFromUrl().then((sessionExists) => {
+      if (!mounted) return;
+      setHasSession(sessionExists);
+      setSessionChecked(true);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Passwort setzen Session-Prüfung abgeschlossen:", sessionExists);
+      }
+    });
+
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, [supabase]);
+
+  async function initializeSessionFromUrl() {
+    if (process.env.NODE_ENV !== "production") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      console.log("Passwort setzen Suchparameter:", Array.from(searchParams.keys()));
+      console.log("Passwort setzen Hash-Typ:", hashParams.get("type"));
+      console.log("Passwort setzen Hash enthält Session:", Boolean(hashParams.get("access_token") && hashParams.get("refresh_token")));
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get("code");
+    if (code) {
+      await supabase.auth.exchangeCodeForSession(code);
+      window.history.replaceState(null, "", "/auth/passwort-setzen");
+    }
+
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    if (accessToken && refreshToken) {
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      });
+      window.history.replaceState(null, "", "/auth/passwort-setzen");
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    const { data } = await supabase.auth.getSession();
+    return Boolean(data.session);
+  }
 
   async function savePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

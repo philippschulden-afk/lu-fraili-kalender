@@ -8,7 +8,8 @@ export async function GET(request: Request) {
   const next = getSafeNextPath(requestUrl.searchParams.get("next"));
 
   if (process.env.NODE_ENV !== "production") {
-    console.log("Auth Callback URL:", requestUrl.toString());
+    console.log("Auth Callback Suchparameter:", Array.from(requestUrl.searchParams.keys()));
+    console.log("Auth Callback Code vorhanden:", Boolean(code));
     console.log("Auth Callback next:", next);
   }
 

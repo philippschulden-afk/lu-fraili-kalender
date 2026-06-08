@@ -7,6 +7,10 @@ export function getAppUrl(origin?: string) {
 }
 
 export function buildPasswordSetupRedirectUrl(appUrl: string) {
+  return `${appUrl}${passwordSetupPath}`;
+}
+
+export function buildPasswordSetupCallbackRedirectUrl(appUrl: string) {
   return `${appUrl}/auth/callback?next=${passwordSetupPath}`;
 }
 
