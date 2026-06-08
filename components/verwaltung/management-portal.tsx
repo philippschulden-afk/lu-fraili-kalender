@@ -199,6 +199,20 @@ export function ManagementPortal({
     setMessage("user-new", { type: "success", text: result.message ?? "Änderung gespeichert." });
   }
 
+  async function setStartPassword(profileId: string) {
+    if (!window.confirm("Startpasswort für diesen Nutzer setzen?")) return;
+    setSavingKey(`profile-password-${profileId}`);
+    const response = await fetch(`/api/verwaltung/profiles/${profileId}/password`, { method: "POST" });
+    const result = await readResult(response);
+    setSavingKey(null);
+    setMessage(
+      `profile-${profileId}`,
+      response.ok
+        ? { type: "success", text: result.message ?? "Startpasswort wurde gesetzt." }
+        : { type: "error", text: result.error ?? "Startpasswort konnte nicht gesetzt werden." }
+    );
+  }
+
   async function saveBooking(bookingId: string, statusOverride?: BookingStatus) {
     const booking = bookings.find((item) => item.id === bookingId);
     if (!booking) return;
@@ -383,7 +397,7 @@ export function ManagementPortal({
         <div className="mt-5 space-y-4">
           {profiles.map((profile) => (
             <div key={profile.id} className="rounded-lg border border-teal-100 p-4">
-              <div className="grid gap-3 xl:grid-cols-[1fr_1.2fr_220px_170px_130px_auto_auto] xl:items-end">
+              <div className="grid gap-3 xl:grid-cols-[1fr_1.2fr_220px_170px_130px_auto_auto_auto] xl:items-end">
                 <TextInput label="Name" value={profile.full_name ?? ""} onChange={(value) => updateProfile(profile.id, { full_name: value })} />
                 <div><p className="font-bold">E-Mail</p><p className="mt-2 rounded-md bg-paper p-3 text-lg break-words">{profile.email}</p></div>
                 <Select label="Familienpartei" value={profile.family_party_id ?? ""} onChange={(value) => updateProfile(profile.id, { family_party_id: value || null })}>
@@ -396,6 +410,7 @@ export function ManagementPortal({
                 </Select>
                 <div><p className="font-bold">Erstellt am</p><p className="mt-2 rounded-md bg-paper p-3">{formatGermanDate(profile.created_at)}</p></div>
                 <button className="focus-ring rounded-lg bg-teal-700 px-5 py-3 text-lg font-bold text-white disabled:bg-gray-400" disabled={savingKey === `profile-${profile.id}`} onClick={() => saveProfile(profile.id)}>Speichern</button>
+                <button className="focus-ring rounded-lg border border-teal-700 bg-white px-5 py-3 text-lg font-bold text-teal-900 disabled:bg-gray-100" disabled={savingKey === `profile-password-${profile.id}`} onClick={() => setStartPassword(profile.id)}>Startpasswort setzen</button>
                 <button className="focus-ring rounded-lg border border-red-300 bg-white px-5 py-3 text-lg font-bold text-red-800 disabled:bg-gray-100" disabled={savingKey === `profile-delete-${profile.id}`} onClick={() => deleteProfile(profile.id)}>Nutzer entfernen</button>
               </div>
               {!profile.family_party_id ? <p className="mt-3 inline-flex rounded-full bg-orange-100 px-3 py-1 font-bold text-orange-950">Noch keiner Familienpartei zugeordnet</p> : <p className="mt-3 text-gray-700">Zugeordnet zu {partyNameById.get(profile.family_party_id) ?? "Familienpartei"}</p>}

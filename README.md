@@ -113,6 +113,7 @@ CRON_SECRET=change-me
 TEST_INVITE_EMAIL=
 FAMILY_LOGIN_MODE=false
 FAMILY_SHARED_PASSWORD=
+DEFAULT_USER_PASSWORD=
 ```
 
 Wichtig:
@@ -123,6 +124,7 @@ Wichtig:
 - `TEST_INVITE_EMAIL` wird nur lokal für den Invite/Password Flow Test verwendet.
 - `FAMILY_LOGIN_MODE=true` aktiviert den einfachen Familien-Login.
 - `FAMILY_SHARED_PASSWORD` ist das gemeinsame Familienpasswort für diesen Modus.
+- `DEFAULT_USER_PASSWORD` ist das Startpasswort, das Schlichter in der Verwaltung für Supabase-Auth-Nutzer setzen können.
 
 ### Familien-Login
 
