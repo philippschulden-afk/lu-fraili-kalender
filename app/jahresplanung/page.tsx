@@ -197,12 +197,9 @@ function MonthBookingEntry({ booking }: { booking: Booking }) {
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {booking.is_priority ? <span className="rounded bg-teal-800 px-2 py-1 text-sm font-bold text-white">P</span> : null}
-            <span className="rounded-full border border-teal-200 bg-white px-3 py-1 text-sm font-bold">
-              P-Zeit: {booking.is_priority ? "Ja" : "Nein"}
-            </span>
             <StatusBadge status={booking.status} />
           </div>
-          {booking.comment ? <p className="mt-3 text-gray-700">{booking.comment}</p> : null}
+          {booking.comment ? <p className="mt-3 text-sm text-gray-500">{booking.comment}</p> : null}
         </div>
         <Link href={`/buchung/${booking.id}`} className="rounded-lg bg-teal-700 px-4 py-3 text-center font-bold text-white hover:bg-teal-800">
           Details
