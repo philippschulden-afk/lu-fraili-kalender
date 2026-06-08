@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { buildPasswordSetupRedirectUrl, getAppUrl } from "@/lib/auth-redirects";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export function AuthButtons() {
@@ -29,12 +30,10 @@ export function AuthButtons() {
   async function sendResetLink(formData: FormData) {
     setResetMessage("");
     const email = String(formData.get("reset_email"));
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (window.location.hostname === "localhost" ? "http://localhost:3000" : window.location.origin);
+    const appUrl = getAppUrl(window.location.origin);
 
     await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`
+      redirectTo: buildPasswordSetupRedirectUrl(appUrl)
     });
     setResetMessage("Wenn die E-Mail-Adresse bekannt ist, wurde ein Link zum Zurücksetzen verschickt.");
   }

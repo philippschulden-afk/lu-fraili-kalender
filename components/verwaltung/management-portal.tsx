@@ -26,6 +26,7 @@ type ManagementPortalProps = {
   initialForfeitures: PriorityDayForfeiture[];
   septemberRuleEnabled: boolean;
   year: number;
+  showInviteFlowDebug: boolean;
 };
 
 const bookingFilters: Array<{ value: string; label: string }> = [
@@ -45,7 +46,8 @@ export function ManagementPortal({
   initialObjections,
   initialForfeitures,
   septemberRuleEnabled,
-  year
+  year,
+  showInviteFlowDebug
 }: ManagementPortalProps) {
   const [familyParties, setFamilyParties] = useState(initialFamilyParties);
   const [profiles, setProfiles] = useState(initialProfiles);
@@ -150,6 +152,19 @@ export function ManagementPortal({
     setNewUser({ full_name: "", email: "", family_party_id: "", role: "user" });
     setShowUserForm(false);
     setMessage("user-new", { type: "success", text: result.message ?? "Der Nutzer wurde angelegt. Falls keine Einladung verschickt wurde, kann er sich über die Login-Seite anmelden." });
+  }
+
+  async function testInviteFlow() {
+    setSavingKey("invite-flow-test");
+    const response = await fetch("/api/verwaltung/debug/invite-flow", { method: "POST" });
+    const result = await readResult(response);
+    setSavingKey(null);
+    setMessage(
+      "invite-flow-test",
+      response.ok
+        ? { type: "success", text: result.message ?? "Test-Einladung wurde angestoßen." }
+        : { type: "error", text: result.error ?? "Der Invite-Flow-Test konnte nicht gestartet werden." }
+    );
   }
 
   async function saveProfile(profileId: string) {
@@ -333,10 +348,22 @@ export function ManagementPortal({
             <h2 className="text-2xl font-bold text-teal-950">Nutzer verwalten</h2>
             <p className="mt-2 text-gray-700">Neue Nutzer erscheinen hier nach der ersten Anmeldung und können dann einer Familienpartei zugeordnet werden.</p>
           </div>
-          <button className="focus-ring rounded-lg bg-teal-700 px-5 py-3 text-lg font-bold text-white" onClick={() => setShowUserForm((value) => !value)}>
-            + Nutzer einladen
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {showInviteFlowDebug ? (
+              <button
+                className="focus-ring rounded-lg border border-orange-300 bg-orange-50 px-5 py-3 text-lg font-bold text-orange-950 disabled:bg-gray-100"
+                disabled={savingKey === "invite-flow-test"}
+                onClick={testInviteFlow}
+              >
+                Invite-Flow testen
+              </button>
+            ) : null}
+            <button className="focus-ring rounded-lg bg-teal-700 px-5 py-3 text-lg font-bold text-white" onClick={() => setShowUserForm((value) => !value)}>
+              + Nutzer einladen
+            </button>
+          </div>
         </div>
+        {messages["invite-flow-test"] ? <MessageLine message={messages["invite-flow-test"]} /> : null}
         {showUserForm ? (
           <div className="mt-4 grid gap-3 rounded-lg bg-paper p-4 lg:grid-cols-[1fr_1fr_220px_170px_auto] lg:items-end">
             <TextInput label="Name" value={newUser.full_name} onChange={(value) => setNewUser((current) => ({ ...current, full_name: value }))} />

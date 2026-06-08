@@ -17,6 +17,9 @@ export default function SetPasswordPage() {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Passwort setzen Session aktiv:", Boolean(data.session));
+      }
       setHasSession(Boolean(data.session));
       setSessionChecked(true);
     });

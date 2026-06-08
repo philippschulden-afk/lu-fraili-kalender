@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { buildPasswordSetupRedirectUrl, getAppUrl } from "@/lib/auth-redirects";
 import { getNotificationRecipients, sendUnassignedUserEmail } from "@/lib/email";
 import { getSchlichterContext } from "@/lib/schlichter";
 import type { Profile, UserRole } from "@/lib/types";
@@ -23,11 +24,15 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   let authUserId: string | null = null;
   let inviteSent = false;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const redirectTo = buildPasswordSetupRedirectUrl(getAppUrl());
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("Invite redirectTo:", redirectTo);
+  }
 
   const inviteResult = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName },
-    redirectTo: `${appUrl}/auth/callback?next=/auth/passwort-setzen`
+    redirectTo
   });
 
   if (inviteResult.data.user?.id) {

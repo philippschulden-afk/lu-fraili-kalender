@@ -77,6 +77,25 @@ http://localhost:3000/auth/callback
 http://localhost:3000/auth/passwort-setzen
 ```
 
+### Invite/Password Flow Test
+
+Für einen lokalen Test des Einladungs- und Passwort-Flusses:
+
+1. In `.env.local` eine Testadresse setzen:
+
+```bash
+TEST_INVITE_EMAIL=testperson@example.com
+```
+
+2. App lokal starten und als Schlichter anmelden.
+3. In der Verwaltung unter `Nutzer verwalten` auf `Invite-Flow testen` klicken.
+4. Die E-Mail an die Testadresse öffnen und den Link anklicken.
+5. Die App sollte auf `/auth/passwort-setzen` landen.
+6. Neues Passwort setzen.
+7. Danach sollte die Weiterleitung zu `/dashboard` erfolgen und die Anmeldung mit E-Mail und Passwort funktionieren.
+
+Der Testknopf erscheint nur in der lokalen Entwicklung und nicht in Produktion.
+
 ## 4. Umgebungsvariablen
 
 Diese Werte müssen lokal in `.env.local` und bei Vercel als Environment Variables gesetzt werden:
@@ -89,6 +108,7 @@ RESEND_API_KEY=
 EMAIL_FROM=Lu Fraili <buchungen@example.com>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 CRON_SECRET=change-me
+TEST_INVITE_EMAIL=
 ```
 
 Wichtig:
@@ -96,6 +116,7 @@ Wichtig:
 - `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY` dürfen im Browser sichtbar sein.
 - `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` und `CRON_SECRET` dürfen nicht im Browser stehen.
 - In Vercel sollte `NEXT_PUBLIC_APP_URL` die echte Vercel-Adresse sein.
+- `TEST_INVITE_EMAIL` wird nur lokal für den Invite/Password Flow Test verwendet.
 
 ## 5. Datenbank-Migrationen
 

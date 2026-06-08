@@ -44,6 +44,7 @@ export default async function ManagementPage() {
         initialForfeitures={forfeitures}
         septemberRuleEnabled={setting?.value ?? true}
         year={year}
+        showInviteFlowDebug={process.env.NODE_ENV !== "production"}
       />
     </PageShell>
   );
