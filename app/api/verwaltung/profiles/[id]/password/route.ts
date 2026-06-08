@@ -24,17 +24,36 @@ export async function POST(_request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "Der Nutzer wurde nicht gefunden." }, { status: 404 });
   }
 
-  if (!profile.user_id) {
-    return NextResponse.json({ error: "Für diesen Nutzer gibt es noch keinen Auth-Zugang." }, { status: 400 });
+  if (profile.user_id) {
+    const { error } = await admin.auth.admin.updateUserById(profile.user_id, {
+      password: temporaryPassword
+    });
+
+    if (!error) {
+      return NextResponse.json({ message: "Startpasswort wurde gesetzt." });
+    }
   }
 
-  const { error } = await admin.auth.admin.updateUserById(profile.user_id, {
-    password: temporaryPassword
+  const createResult = await admin.auth.admin.createUser({
+    email: profile.email,
+    password: temporaryPassword,
+    email_confirm: true,
+    user_metadata: { full_name: profile.full_name ?? profile.email }
   });
 
-  if (error) {
+  const authUserId = createResult.data.user?.id ?? null;
+  if (createResult.error || !authUserId) {
     return NextResponse.json({ error: "Startpasswort konnte nicht gesetzt werden." }, { status: 500 });
   }
 
-  return NextResponse.json({ message: "Startpasswort wurde gesetzt." });
+  const { error: profileUpdateError } = await admin
+    .from("profiles")
+    .update({ user_id: authUserId })
+    .eq("id", profile.id);
+
+  if (profileUpdateError) {
+    return NextResponse.json({ error: "Startpasswort konnte nicht gesetzt werden." }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: "Auth-Nutzer wurde angelegt und Startpasswort wurde gesetzt." });
 }
