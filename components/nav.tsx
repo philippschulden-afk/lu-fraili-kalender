@@ -26,6 +26,11 @@ export function Nav({ profile }: { profile: Profile | null }) {
               Verwaltung
             </Link>
           ) : null}
+          <form action="/api/logout" method="post">
+            <button className="rounded-md px-3 py-2 font-semibold hover:bg-teal-50" type="submit">
+              Abmelden
+            </button>
+          </form>
         </nav>
       </div>
     </header>

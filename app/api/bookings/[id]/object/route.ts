@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getAuthContext } from "@/lib/auth-context";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
-import type { Booking, Profile } from "@/lib/types";
+import type { Booking } from "@/lib/types";
 
 type SelectedBookingRow = Pick<
   Booking,
@@ -25,18 +25,13 @@ type SelectedBookingRow = Pick<
 };
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile } = await getAuthContext();
   if (!user) return NextResponse.json({ error: "Bitte zuerst anmelden." }, { status: 401 });
 
   const body = await request.json();
   const reason = String(body.reason ?? "").trim();
   if (reason.length < 3) return NextResponse.json({ error: "Bitte gib einen kurzen Grund ein." }, { status: 400 });
 
-  const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
-  const profile = profileData as Profile | null;
   const { data: bookingData } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", params.id).single();
   const booking = bookingData as SelectedBookingRow | null;
   if (!profile || !booking) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });

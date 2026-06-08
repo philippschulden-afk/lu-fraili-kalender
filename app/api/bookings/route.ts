@@ -1,10 +1,10 @@
 import { addDays } from "date-fns";
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth-context";
 import { findBookingConflicts, hasBlockingPriorityConflict } from "@/lib/conflicts";
 import { calculateBookingDays, checkOverlaps, validateMaxSinglePriorityBooking, validatePriorityQuota, getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
-import type { Booking, PriorityDayForfeiture, Profile } from "@/lib/types";
+import type { Booking, PriorityDayForfeiture } from "@/lib/types";
 
 type CreatedBookingRow = Pick<
   Booking,
@@ -27,14 +27,9 @@ type CreatedBookingRow = Pick<
 };
 
 export async function POST(request: Request) {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile } = await getAuthContext();
   if (!user) return NextResponse.json({ error: "Bitte zuerst anmelden." }, { status: 401 });
 
-  const { data: profileData } = await supabase.from("profiles").select("*, family_parties(*)").eq("user_id", user.id).single();
-  const profile = profileData as Profile | null;
   if (!profile?.family_party_id) return NextResponse.json({ error: "Dein Konto ist noch keiner Familienpartei zugeordnet." }, { status: 400 });
 
   const body = await request.json();

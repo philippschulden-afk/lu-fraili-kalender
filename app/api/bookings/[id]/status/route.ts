@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth-context";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
 import { createPriorityDayForfeitureIfNeeded } from "@/lib/priority-forfeitures";
 import { shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
-import type { Booking, BookingStatus, Profile } from "@/lib/types";
+import type { Booking, BookingStatus } from "@/lib/types";
 
 const allowedStatuses = ["bestaetigt", "storniert", "abgelehnt"] as const;
 
@@ -29,10 +29,7 @@ type SelectedBookingRow = Pick<
 };
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile } = await getAuthContext();
   if (!user) return NextResponse.json({ error: "Bitte zuerst anmelden." }, { status: 401 });
 
   const body = await request.json();
@@ -41,8 +38,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "Unbekannter Status." }, { status: 400 });
   }
 
-  const { data: profileData } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
-  const profile = profileData as Profile | null;
   const { data: bookingData } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", params.id).single();
   const booking = bookingData as SelectedBookingRow | null;
   if (!profile || !booking) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });

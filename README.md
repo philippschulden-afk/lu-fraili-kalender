@@ -111,6 +111,8 @@ EMAIL_FROM=Lu Fraili <buchungen@example.com>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 CRON_SECRET=change-me
 TEST_INVITE_EMAIL=
+FAMILY_LOGIN_MODE=false
+FAMILY_SHARED_PASSWORD=
 ```
 
 Wichtig:
@@ -119,6 +121,27 @@ Wichtig:
 - `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` und `CRON_SECRET` dürfen nicht im Browser stehen.
 - In Vercel sollte `NEXT_PUBLIC_APP_URL` die echte Vercel-Adresse sein.
 - `TEST_INVITE_EMAIL` wird nur lokal für den Invite/Password Flow Test verwendet.
+- `FAMILY_LOGIN_MODE=true` aktiviert den einfachen Familien-Login.
+- `FAMILY_SHARED_PASSWORD` ist das gemeinsame Familienpasswort für diesen Modus.
+
+### Familien-Login
+
+Für die einfache Nutzung innerhalb der Familie kann der Familien-Login aktiviert werden:
+
+```bash
+FAMILY_LOGIN_MODE=true
+FAMILY_SHARED_PASSWORD=LuFraili14
+```
+
+Dann zeigt die Loginseite statt E-Mail/Passwort eine einfache Auswahl:
+
+- Christoph
+- Peter
+- Philipp
+- Teresa
+- Franziska
+
+Nach Auswahl der Person und Eingabe des gemeinsamen Passworts wird eine sichere Session per Cookie angelegt. Philipp erhält dabei die Rolle `Schlichter`. Supabase Auth bleibt im Projekt erhalten und wird wieder genutzt, sobald `FAMILY_LOGIN_MODE=false` gesetzt ist.
 
 ## 5. Datenbank-Migrationen
 
