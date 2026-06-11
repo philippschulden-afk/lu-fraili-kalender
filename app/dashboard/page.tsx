@@ -20,12 +20,17 @@ export default async function DashboardPage() {
   const clarification = bookings.filter((booking) => booking.status === "klaerung");
   const requests = bookings.filter((booking) => booking.status === "angefragt").slice(0, 4);
   const confirmed = bookings.filter((booking) => booking.status === "bestaetigt" && booking.end_date >= new Date().toISOString().slice(0, 10)).slice(0, 4);
+  const displayName = profile?.full_name || profile?.family_parties?.name || "Familie";
 
   return (
     <PageShell>
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <section>
           <h1 className="text-3xl font-bold text-teal-950">Start</h1>
+          <div className="mt-4 rounded-lg border border-teal-100 bg-white p-4 shadow-sm">
+            <p className="text-2xl font-bold text-teal-950">Bene bènnidos, {displayName}</p>
+            <p className="mt-1 text-lg text-gray-700">Willkommen in Lu Fraili.</p>
+          </div>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <Link className="inline-block rounded-lg bg-teal-700 px-6 py-4 text-center text-xl font-bold text-white hover:bg-teal-800" href={`/jahresplanung?year=${year}`}>
               Zur Jahresplanung
