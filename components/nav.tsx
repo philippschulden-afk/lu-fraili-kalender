@@ -21,6 +21,9 @@ export function Nav({ profile }: { profile: Profile | null }) {
           <Link className="rounded-md px-3 py-2 hover:bg-teal-50" href="/meine-buchungen">
             Meine Buchungen
           </Link>
+          <Link className="rounded-md px-3 py-2 text-teal-800 hover:bg-teal-50" href="/regeln">
+            Regeln
+          </Link>
           {profile?.role === "schlichter" ? (
             <Link className="rounded-md px-3 py-2 hover:bg-teal-50" href="/verwaltung">
               Verwaltung

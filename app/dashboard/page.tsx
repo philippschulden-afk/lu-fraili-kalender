@@ -42,6 +42,12 @@ export default async function DashboardPage() {
           <Link className="mt-3 inline-block font-semibold text-teal-800 underline" href="/kalender">
             Monatskalender ansehen
           </Link>
+          <p className="mt-3 text-gray-700">
+            Du bist unsicher?{" "}
+            <Link className="font-semibold text-teal-800 underline" href="/regeln">
+              Hier findest du die Regeln.
+            </Link>
+          </p>
           {clarification.length > 0 ? (
             <div className="mt-6 rounded-lg border border-orange-200 bg-orange-50 p-4">
               <h2 className="text-2xl font-bold text-orange-950">Klärung erforderlich</h2>
