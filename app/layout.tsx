@@ -3,7 +3,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Lu Fraili Belegungskalender",
-  description: "Privater Familienkalender für das Ferienhaus in Lu Fraili."
+  description: "Privater Familienkalender für das Ferienhaus in Lu Fraili.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png"
+  },
+  manifest: "/manifest.webmanifest"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
