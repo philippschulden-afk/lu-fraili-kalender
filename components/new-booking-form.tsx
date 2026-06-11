@@ -44,6 +44,11 @@ export function NewBookingForm({
       })
     : [];
   const blocksSubmission = hasBlockingConflict(conflictPreview);
+  const priorityDisplacementConflicts = conflictPreview.filter((conflict) => conflict.kind === "priority_displacement");
+  const affectedPartyNames = Array.from(
+    new Set(priorityDisplacementConflicts.map((conflict) => conflict.booking.family_parties?.name ?? "Familienpartei"))
+  );
+  const affectedPartyText = affectedPartyNames.join(", ");
 
   const septemberWarning = useMemo(() => {
     if (!septemberRuleEnabled || !startDate || !endDate) return "";
@@ -154,7 +159,7 @@ export function NewBookingForm({
                   if (conflict.kind === "priority_displacement") {
                     return (
                       <p key={conflict.booking.id} className="rounded-lg bg-amber-50 p-3 text-amber-950">
-                        Diese P-Zeit würde eine normale Buchung von {partyName} vom {range} verdrängen. Die betroffene Partei wird informiert.
+                        Diese P-Zeit überschneidet sich mit einer normalen Buchung von {partyName} vom {range}. Nach den Regeln kann eine normale Buchung durch eine gültige P-Zeit verdrängt werden. Die betroffene Partei sollte informiert werden.
                       </p>
                     );
                   }
@@ -191,6 +196,11 @@ export function NewBookingForm({
         {createdBookingId ? (
           <div className="mt-6 rounded-lg bg-green-50 p-4 text-green-900">
             <p className="text-lg font-bold">Buchungsanfrage wurde erstellt.</p>
+            {affectedPartyText ? (
+              <p className="mt-2">
+                Bitte informiere {affectedPartyText}, dass ihre normale Buchung durch deine P-Zeit betroffen ist.
+              </p>
+            ) : null}
             <div className="mt-3">
               <WhatsAppShareButton
                 input={{
@@ -200,7 +210,8 @@ export function NewBookingForm({
                   startDate,
                   endDate,
                   isPriority,
-                  status: "angefragt"
+                  status: "angefragt",
+                  priorityDisplacementPartyName: affectedPartyText || undefined
                 }}
               />
             </div>

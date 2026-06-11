@@ -12,6 +12,7 @@ export type WhatsAppBookingShareInput = {
   endDate: string;
   isPriority: boolean;
   status: BookingStatus;
+  priorityDisplacementPartyName?: string;
 };
 
 export function buildWhatsAppShareUrl(input: WhatsAppBookingShareInput) {
@@ -24,13 +25,16 @@ export function buildWhatsAppMessage(input: WhatsAppBookingShareInput) {
   const status = statusLabels[input.status];
 
   if (input.type === "new_request") {
+    const displacementHint = input.priorityDisplacementPartyName
+      ? `\n\nHinweis: Diese P-Zeit überschneidet sich mit einer normalen Buchung von ${input.priorityDisplacementPartyName}. Bitte stimmt euch dazu ab.`
+      : "";
     return `Neue Buchungsanfrage Lu Fraili
 
 ${input.familyPartyName} möchte vom ${range} nach Lu Fraili.
 
 P-Zeit: ${priority}
 
-Falls niemand widerspricht, wird die Buchung in 3 Tagen automatisch bestätigt.`;
+Falls niemand widerspricht, wird die Buchung in 3 Tagen automatisch bestätigt.${displacementHint}`;
   }
 
   if (input.type === "confirmed") {

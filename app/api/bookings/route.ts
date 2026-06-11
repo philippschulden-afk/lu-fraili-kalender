@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     });
     const schlichterRecipients = await getNotificationRecipients(supabase, { onlySchlichter: true });
     await sendBookingNotification({
-      to: [...affectedRecipients, ...schlichterRecipients, profile.email],
+      to: [...affectedRecipients, ...schlichterRecipients],
       type: "priority_displacement",
       booking,
       partyName: booking.family_parties?.name ?? "Familienpartei",
