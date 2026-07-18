@@ -22,10 +22,29 @@ export function getPriorityDaysUsed(bookings: RuleBooking[], familyPartyId: stri
         booking.family_party_id === familyPartyId &&
         booking.is_priority &&
         bookingYear === year &&
-        booking.status === "bestaetigt"
+        ["angefragt", "bestaetigt", "klaerung"].includes(booking.status)
       );
     })
     .reduce((sum, booking) => sum + calculateBookingDays(booking.start_date, booking.end_date), 0);
+}
+
+export function calculateDateRangeDeltaDays(oldStart: string, oldEnd: string, newStart: string, newEnd: string) {
+  const oldDays = calculateBookingDays(oldStart, oldEnd);
+  const newDays = calculateBookingDays(newStart, newEnd);
+  if (oldDays <= 0 || newDays <= 0) return Math.max(oldDays, newDays);
+
+  const oldStartDate = parseISO(oldStart);
+  const oldEndDate = parseISO(oldEnd);
+  const newStartDate = parseISO(newStart);
+  const newEndDate = parseISO(newEnd);
+
+  if (newEndDate < oldStartDate || newStartDate > oldEndDate) return oldDays + newDays;
+
+  const overlapStart = newStartDate > oldStartDate ? newStartDate : oldStartDate;
+  const overlapEnd = newEndDate < oldEndDate ? newEndDate : oldEndDate;
+  const overlappingDays = calculateBookingDays(toDateOnly(overlapStart), toDateOnly(overlapEnd));
+
+  return Math.max(oldDays + newDays - overlappingDays * 2, 0);
 }
 
 export function getTotalPriorityDaysUsedIncludingForfeitures(

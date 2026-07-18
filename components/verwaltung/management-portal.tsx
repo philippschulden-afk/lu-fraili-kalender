@@ -297,7 +297,7 @@ export function ManagementPortal({
 
   function pDaysUsedForParty(partyId: string) {
     return bookings
-      .filter((booking) => booking.family_party_id === partyId && booking.is_priority && booking.status === "bestaetigt" && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear)
+      .filter((booking) => booking.family_party_id === partyId && booking.is_priority && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear)
       .reduce((sum, booking) => sum + calculateBookingDays(booking.start_date, booking.end_date), 0);
   }
 
@@ -514,7 +514,7 @@ export function ManagementPortal({
             const activeUsed = pDaysUsedForParty(party.id);
             const forfeitedUsed = forfeitedDaysForParty(party.id);
             const used = activeUsed + forfeitedUsed;
-            const confirmedPriorityBookings = bookings.filter((booking) => booking.family_party_id === party.id && booking.is_priority && booking.status === "bestaetigt" && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear);
+            const activePriorityBookings = bookings.filter((booking) => booking.family_party_id === party.id && booking.is_priority && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear);
             return (
               <div key={party.id} className="rounded-lg border border-teal-100 p-4">
                 <h3 className="text-xl font-bold">{party.name}</h3>
@@ -523,9 +523,9 @@ export function ManagementPortal({
                 <p className="text-lg">Verbraucht gesamt: <strong>{used} / 42</strong></p>
                 <p className="text-lg">Verbleibend: <strong>{Math.max(42 - used, 0)}</strong></p>
                 <div className="mt-3 space-y-1">
-                  {confirmedPriorityBookings.length ? confirmedPriorityBookings.map((booking) => (
+                  {activePriorityBookings.length ? activePriorityBookings.map((booking) => (
                     <p key={booking.id} className="rounded bg-paper p-2">{formatGermanDate(booking.start_date)} bis {formatGermanDate(booking.end_date)}: {calculateBookingDays(booking.start_date, booking.end_date)} Tage</p>
-                  )) : <p className="text-gray-700">Keine bestätigten P-Buchungen in diesem Jahr.</p>}
+                  )) : <p className="text-gray-700">Keine aktiven P-Buchungen in diesem Jahr.</p>}
                 </div>
               </div>
             );

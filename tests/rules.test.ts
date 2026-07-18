@@ -3,6 +3,7 @@ import { findBookingConflicts, hasBlockingPriorityConflict, isOverlappingBooking
 import {
   bookingsOverlap,
   calculateBookingDays,
+  calculateDateRangeDeltaDays,
   canAutoConfirmBooking,
   checkOverlaps,
   checkSeptemberWarning,
@@ -99,6 +100,33 @@ describe("booking rules", () => {
 
   it("calculates used priority days for one party and year", () => {
     expect(getPriorityDaysUsed(bookings, "peter", 2026)).toBe(14);
+  });
+
+  it("counts requested priority days against the annual quota", () => {
+    expect(
+      getPriorityDaysUsed(
+        [
+          ...bookings,
+          {
+            id: "requested",
+            family_party_id: "peter",
+            start_date: "2026-09-01",
+            end_date: "2026-09-07",
+            is_priority: true,
+            shared_stay_allowed: false,
+            status: "angefragt"
+          }
+        ],
+        "peter",
+        2026
+      )
+    ).toBe(21);
+  });
+
+  it("calculates the changed days between two date ranges", () => {
+    expect(calculateDateRangeDeltaDays("2026-06-13", "2026-06-20", "2026-06-13", "2026-06-24")).toBe(4);
+    expect(calculateDateRangeDeltaDays("2026-06-13", "2026-06-20", "2026-06-16", "2026-06-23")).toBe(6);
+    expect(calculateDateRangeDeltaDays("2026-06-13", "2026-06-20", "2026-06-13", "2026-06-17")).toBe(3);
   });
 
   it("blocks priority quota over 42 days", () => {
