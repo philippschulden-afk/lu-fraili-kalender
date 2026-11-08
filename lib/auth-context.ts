@@ -10,19 +10,23 @@ export async function getAuthContext() {
     return { supabase: createSupabaseAdminClient(), user: null, profile: null };
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
 
   if (!user) return { supabase, user: null, profile: null };
 
-  const { data: profileData } = await supabase
+  const { data: profileData, error } = await supabase
     .from("profiles")
     .select("*, family_parties(*)")
     .eq("user_id", user.id)
     .single();
   const profile = profileData as Profile | null;
+  if (error && error.code !== "PGRST116") throw new Error("Der Zugang konnte nicht geprüft werden.");
+  if (profile && !profile.family_party_id && profile.role !== "schlichter") {
+    return { supabase, user: { id: user.id, email: user.email ?? null }, profile: null };
+  }
 
   return { supabase, user: { id: user.id, email: user.email ?? null }, profile };
 }

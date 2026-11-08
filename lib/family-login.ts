@@ -59,12 +59,12 @@ export function readFamilySessionCookie(value?: string | null) {
   }
 }
 
-export function getFamilySessionFromCookies() {
-  return readFamilySessionCookie(cookies().get(familyLoginCookieName)?.value);
+export async function getFamilySessionFromCookies() {
+  return readFamilySessionCookie((await cookies()).get(familyLoginCookieName)?.value);
 }
 
 export async function getFamilyProfileFromSession() {
-  const session = getFamilySessionFromCookies();
+  const session = await getFamilySessionFromCookies();
   if (!session) return null;
 
   const identity = getFamilyIdentity(session.identity);

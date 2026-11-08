@@ -41,6 +41,8 @@ export type Booking = {
   updated_at: string;
   family_parties?: FamilyParty | null;
   profiles?: Profile | null;
+  priority_protected_dates?: string[] | null;
+  priority_protection_start_date?: string | null;
 };
 
 export type Objection = {

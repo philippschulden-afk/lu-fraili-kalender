@@ -14,8 +14,13 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = createSupabaseServerClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const supabase = await createSupabaseServerClient();
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) return NextResponse.redirect(new URL("/auth/passwort-setzen?error=link", requestUrl.origin));
+    } catch {
+      return NextResponse.redirect(new URL("/auth/passwort-setzen?error=link", requestUrl.origin));
+    }
   }
 
   const redirectTarget = next ?? "/dashboard";

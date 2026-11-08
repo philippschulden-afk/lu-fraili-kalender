@@ -11,7 +11,8 @@ type AuthUserStatus = {
   last_sign_in_at?: string | null;
 };
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const context = await getSchlichterContext();
   if (context.error) return NextResponse.json({ error: context.error }, { status: context.status });
 
@@ -29,7 +30,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: profileData } = await admin
     .from("profiles")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
   const profile = profileData as Profile | null;
 

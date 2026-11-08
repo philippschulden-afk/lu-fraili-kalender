@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { familyIdentities, type FamilyIdentityName } from "@/lib/family-login-options";
 
 export function FamilyLoginForm() {
+  const router = useRouter();
   const [identity, setIdentity] = useState<FamilyIdentityName>(familyIdentities[0]);
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -26,7 +28,7 @@ export function FamilyLoginForm() {
       return;
     }
 
-    window.location.href = "/dashboard";
+    router.replace("/dashboard");
   }
 
   return (

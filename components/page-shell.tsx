@@ -9,6 +9,7 @@ export async function getCurrentProfile() {
 export async function requireProfile() {
   const context = await getCurrentProfile();
   if (!context.user) redirect("/login");
+  if (!context.profile || (!context.profile.family_party_id && context.profile.role !== "schlichter")) redirect("/zugang");
   return context;
 }
 

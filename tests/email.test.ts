@@ -3,15 +3,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BookingSaveResult } from "@/lib/booking-store";
 
 const resend = vi.hoisted(() => vi.fn());
-vi.mock("resend", () => ({ Resend: resend }));
 import { getNotificationRecipients, sendEmail, sendUnassignedUserEmail } from "@/lib/email";
 import { notifyBookingSave, recordEmailResult } from "@/lib/booking-notifications";
 
-afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
 describe("disabled app email notifications", () => {
   it.each(["", "dummy", "configured-key"])("never contacts Resend with key %s", async (key) => {
     vi.stubEnv("RESEND_API_KEY", key);
+    vi.stubGlobal("fetch", resend);
     expect(await sendEmail({ to: ["peter@example.com"], subject: "Test", html: "Test" }))
       .toEqual({ ok: true, skipped: true });
     expect(resend).not.toHaveBeenCalled();

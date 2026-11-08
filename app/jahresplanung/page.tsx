@@ -13,15 +13,15 @@ const priorityQuotaDays = 42;
 export default async function JahresplanungPage({
   searchParams
 }: {
-  searchParams: { year?: string };
+  searchParams: Promise<{ year?: string }>;
 }) {
   const { supabase } = await requireProfile();
-  const selectedYear = parseYearParam(searchParams.year) ?? new Date().getFullYear();
+  const selectedYear = parseYearParam((await searchParams).year) ?? new Date().getFullYear();
   const yearStart = `${selectedYear}-01-01`;
   const yearEnd = `${selectedYear}-12-31`;
   const todayIso = toDateOnlyIso(new Date());
 
-  const { data: bookingsData } = await supabase
+  const { data: bookingsData, error: bookingsError } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .lte("start_date", yearEnd)
@@ -29,24 +29,25 @@ export default async function JahresplanungPage({
     .order("start_date", { ascending: true })
     .returns<Booking[]>();
 
-  const { data: familyPartiesData } = await supabase
+  const { data: familyPartiesData, error: partiesError } = await supabase
     .from("family_parties")
     .select("*")
     .order("name", { ascending: true })
     .returns<FamilyParty[]>();
 
-  const { data: forfeituresData } = await supabase
+  const { data: forfeituresData, error: forfeituresError } = await supabase
     .from("priority_day_forfeitures")
     .select("*")
     .eq("year", selectedYear)
     .returns<PriorityDayForfeiture[]>();
 
+  if (bookingsError || partiesError || forfeituresError) throw new Error("Die Jahresplanung konnte nicht geladen werden.");
   const bookings = bookingsData ?? [];
   const familyParties = familyPartiesData ?? [];
   const forfeitures = forfeituresData ?? [];
   const freePeriods = calculateFreePeriods(bookings, yearStart, yearEnd);
   const nextStays = bookings
-    .filter((booking) => booking.end_date >= todayIso)
+    .filter((booking) => booking.end_date >= todayIso && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status))
     .sort((a, b) => a.start_date.localeCompare(b.start_date))
     .slice(0, 5);
 

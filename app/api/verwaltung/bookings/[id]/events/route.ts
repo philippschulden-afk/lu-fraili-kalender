@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSchlichterContext } from "@/lib/schlichter";
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const context = await getSchlichterContext();
   if (context.error) return NextResponse.json({ error: context.error }, { status: context.status });
 
@@ -12,7 +13,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const admin = createSupabaseAdminClient();
   const { error } = await admin.from("booking_events").insert({
-    booking_id: params.id,
+    booking_id: id,
     event_type: "schlichter_comment",
     message: comment,
     created_by: context.user?.id ?? null

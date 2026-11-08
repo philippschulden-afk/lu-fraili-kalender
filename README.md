@@ -8,7 +8,7 @@ Eine Buchung wird zuerst angefragt. Die anfragende Person teilt die Anfrage übe
 
 Voraussetzungen:
 
-- Node.js 20 oder neuer
+- Node.js 24 (LTS)
 - Ein Supabase-Projekt
 - Kein Resend-Konto erforderlich
 
@@ -30,7 +30,7 @@ http://localhost:3000
 
 1. Neues Supabase-Projekt erstellen.
 2. In Supabase zu `SQL Editor` gehen.
-3. Den Inhalt von `supabase/migrations/001_initial_schema.sql` ausführen.
+3. Alle Migrationen aus Abschnitt 5 in der angegebenen Reihenfolge ausführen.
 4. Danach optional den Inhalt von `supabase/seed/seed.sql` ausführen.
 
 Die Migration erstellt:
@@ -44,29 +44,11 @@ Die Migration erstellt:
 - Row Level Security
 - Schutzregeln für Buchungsänderungen
 
-## 3. Google Login über Supabase OAuth
+## 3. Anmeldung mit E-Mail und Passwort
 
-In Supabase:
+Google-Anmeldung ist aus der App entfernt. Bestehende Auth-Nutzer und ihre Buchungen bleiben erhalten. Ein Schlichter kann für bestehende oder neue Familienmitglieder direkt ein Startpasswort setzen; dafür ist keine Einladungs-E-Mail erforderlich.
 
-1. `Authentication` öffnen.
-2. `Providers` öffnen.
-3. Google aktivieren.
-4. Google Client ID und Client Secret eintragen.
-5. Redirect URL eintragen:
-
-Lokal:
-
-```text
-http://localhost:3000/auth/callback
-```
-
-Auf Vercel:
-
-```text
-https://DEINE-VERCEL-DOMAIN.vercel.app/auth/callback
-```
-
-Familienmitglieder melden sich bevorzugt mit Google an. Nach der ersten Anmeldung erscheint ihr Profil in der Verwaltung und kann einer Familienpartei zugeordnet werden.
+Nur Profile mit Familienzuordnung oder Rolle `schlichter` erhalten Zugriff auf Familiendaten. Eine bloße Supabase-Anmeldung reicht nicht. Neue, unzugeordnete Zugänge sehen eine Freigabeseite; sie können keine fremden Profile, Buchungen oder Verläufe lesen. Als zusätzliche Schutzmaßnahme kann in Supabase die öffentliche Registrierung deaktiviert werden; Einladungen und serverseitiges Anlegen bleiben davon getrennt.
 
 Für Einladungen und Passwort-Zurücksetzen müssen in Supabase unter `Authentication` → `URL Configuration` zusätzlich diese Redirect URLs erlaubt sein:
 
@@ -158,13 +140,14 @@ Die Migrationen werden in dieser Reihenfolge im Supabase SQL Editor ausgeführt:
 supabase/migrations/001_initial_schema.sql
 supabase/migrations/003_priority_day_forfeitures.sql
 supabase/migrations/004_booking_reliability.sql
+supabase/migrations/20261108143829_security_and_yearly_priority.sql
 ```
 
 Bei einem bestehenden Projekt nur die noch nicht ausgeführten Migrationen starten. Insbesondere `001` nicht erneut ausführen.
 
 ### Aktualisierung der Buchungsverwaltung
 
-Vor dem Deployment dieser Version `004_booking_reliability.sql` ausführen. Sie erhält vorhandene Buchungen und Verfallsbuchungen.
+Vor dem Deployment dieser Version erst `004_booking_reliability.sql`, dann `20261108143829_security_and_yearly_priority.sql` ausführen, soweit noch nicht geschehen. Beide erhalten vorhandene Buchungen, Nutzer und Verfallsbuchungen. Die neue Migration schließt direkte Profil- und Verlaufsschreibzugriffe, beschränkt Leserechte auf freigegebene Familienmitglieder und schützt den letzten Schlichter in der Datenbank.
 
 Die neue Version speichert Buchung, erneute Anfrage, Verfall und Verlauf gemeinsam in einer Datenbanktransaktion. Gleichzeitige Anfragen werden für die Regelprüfung nacheinander verarbeitet. Bestätigte P-Zeiten bleiben gesperrt. Angefragte P-Zeiten belegen das Jahreskontingent bereits während der Widerspruchsfrist.
 
@@ -172,7 +155,9 @@ Verfallene Tage werden künftig mit ihrem konkreten Datum gespeichert. Weitere �
 
 Schlichter dürfen über die Verwaltung weiterhin die Mengenbegrenzung der P-Tage übersteuern. Überschneidungen mit bereits bestätigten P-Zeiten bleiben auch dort gesperrt.
 
-Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein, auch bei Anmeldung über Google. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. E-Mail-Benachrichtigungen der App sind abgeschaltet, auch wenn alte Resend-Zugangsdaten noch gesetzt sind. Es entstehen keine neuen E-Mail-Vermerke im Buchungsverlauf; alte Einträge bleiben erhalten.
+Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. E-Mail-Benachrichtigungen der App sind abgeschaltet. Die Resend-Abhängigkeit wurde entfernt. Es entstehen keine neuen E-Mail-Vermerke im Buchungsverlauf; alte Einträge bleiben erhalten.
+
+P-Buchungen werden pro betroffenem Kalenderjahr anteilig berechnet, auch während der Widerspruchsfrist. Beispiel: 26.12. bis 04.01. belegt 6 Tage im ersten und 4 Tage im zweiten Jahr. Die Grenze von 21 Tagen gilt weiterhin für die gesamte einzelne P-Buchung. Anzeige und Datenbank prüfen die jeweilige Jahresquote.
 
 ## 6. Seed-Daten
 
@@ -193,7 +178,7 @@ Enthalten sind:
 - eine Buchung mit Klärung
 - eine normale Buchung ohne P-Zeit
 
-Hinweis: Die Seed-E-Mails sind Platzhalter wie `peter@example.com`. Nach echten Google-Anmeldungen können die echten Profile in der Verwaltung zugeordnet und als Schlichter markiert werden.
+Hinweis: Die Seed-E-Mails sind Platzhalter wie `peter@example.com`. Echte Profile können in der Verwaltung angelegt, zugeordnet und bei Bedarf als Schlichter markiert werden.
 
 ## 7. Benachrichtigungen und WhatsApp
 
@@ -248,7 +233,7 @@ Die Route ist mit `CRON_SECRET` geschützt.
 
 Einfachster Weg:
 
-1. Peter und Carmen melden sich einmal mit Google an.
+1. Die vorgesehenen Personen erhalten über die Verwaltung einen E-Mail-Zugang mit Startpasswort.
 2. In Supabase in der Tabelle `profiles` ihre echten E-Mail-Adressen suchen.
 3. `role` auf `schlichter` setzen.
 4. `family_party_id` zuweisen.

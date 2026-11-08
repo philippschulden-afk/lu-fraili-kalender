@@ -6,12 +6,13 @@ import type { Booking, PriorityDayForfeiture } from "@/lib/types";
 
 export default async function DashboardPage() {
   const { supabase, profile } = await requireProfile();
-  const { data: bookingsData } = await supabase
+  const { data: bookingsData, error: bookingsError } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .order("start_date", { ascending: true })
     .returns<Booking[]>();
-  const { data: forfeituresData } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
+  const { data: forfeituresData, error: forfeituresError } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
+  if (bookingsError || forfeituresError) throw new Error("Die Belegung konnte nicht geladen werden.");
   const bookings = bookingsData ?? [];
   const forfeitures = forfeituresData ?? [];
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { WhatsAppShareButton } from "@/components/whatsapp-share-button";
 import type { Booking, Profile } from "@/lib/types";
 import {
@@ -12,6 +13,7 @@ import {
 import type { WhatsAppShareType } from "@/lib/whatsapp";
 
 export function BookingActions({ booking, profile, objectionCount }: { booking: Booking; profile: Profile; objectionCount: number }) {
+  const router = useRouter();
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error">("error");
@@ -59,6 +61,7 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
       setMessage(result.error ?? "Die Änderung konnte nicht gespeichert werden.");
       return;
     }
+    router.refresh();
     if (body.status === "storniert") {
       setMessageType("success");
       setMessage("Buchung wurde storniert.");
@@ -77,7 +80,8 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
       setSuccessShare({ type: "generic", label: "Per WhatsApp teilen", status: "abgelehnt" });
       return;
     }
-    window.location.reload();
+    setMessageType("success");
+    setMessage("Widerspruch wurde gespeichert.");
   }
 
   async function saveEdit() {
@@ -112,7 +116,8 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
 
     setMessageType("success");
     setMessage(result.message ?? "Änderung gespeichert.");
-    window.setTimeout(() => window.location.reload(), 1200);
+    setShowEdit(false);
+    router.refresh();
   }
 
   return (

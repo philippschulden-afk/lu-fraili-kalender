@@ -4,19 +4,19 @@ import { useMemo, useState } from "react";
 import { formatGermanRange } from "@/lib/date-format";
 import { findBookingConflicts, hasBlockingConflict } from "@/lib/conflicts";
 import { WhatsAppShareButton } from "@/components/whatsapp-share-button";
-import type { Booking, FamilyParty, Profile } from "@/lib/types";
-import { calculateBookingDays } from "@/lib/rules";
+import type { Booking, FamilyParty, Profile, PriorityDayForfeiture } from "@/lib/types";
+import { calculateBookingDays, checkSeptemberWarning, getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
 
 export function NewBookingForm({
   profile,
   familyParties,
-  remainingPriorityDays,
+  forfeitures,
   septemberRuleEnabled,
   existingBookings
 }: {
   profile: Profile;
   familyParties: FamilyParty[];
-  remainingPriorityDays: number;
+  forfeitures: PriorityDayForfeiture[];
   septemberRuleEnabled: boolean;
   existingBookings: Booking[];
 }) {
@@ -31,6 +31,9 @@ export function NewBookingForm({
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
   const selectedParty = familyParties.find((party) => party.id === profile.family_party_id);
   const days = startDate && endDate ? calculateBookingDays(startDate, endDate) : 0;
+  const selectedYears = startDate && endDate && days > 0
+    ? Array.from({ length: Number(endDate.slice(0, 4)) - Number(startDate.slice(0, 4)) + 1 }, (_, i) => Number(startDate.slice(0, 4)) + i)
+    : [new Date().getFullYear()];
   const conflictPreview = startDate && endDate && profile.family_party_id
     ? findBookingConflicts({
         requested: {
@@ -52,11 +55,7 @@ export function NewBookingForm({
 
   const septemberWarning = useMemo(() => {
     if (!septemberRuleEnabled || !startDate || !endDate) return "";
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T00:00:00`);
-    const touchesSeptember = start.getMonth() <= 8 && end.getMonth() >= 8;
-    if (!touchesSeptember || ["Peter", "Christoph"].includes(selectedParty?.name ?? "")) return "";
-    return "Hinweis: Der September soll bevorzugt Peter und Christoph zur Verfügung stehen. Bitte vorher besonders sorgfältig abstimmen.";
+    return checkSeptemberWarning({ startDate, endDate, septemberRuleEnabled, familyPartyName: selectedParty?.name }) ?? "";
   }, [endDate, septemberRuleEnabled, selectedParty?.name, startDate]);
 
   async function submit() {
@@ -165,7 +164,7 @@ export function NewBookingForm({
                   }
                   return (
                     <p key={conflict.booking.id} className="rounded-lg bg-amber-50 p-3 text-amber-950">
-                      Dieser Zeitraum überschneidet sich mit einer normalen Buchung von {partyName} vom {range}. Bitte abstimmen oder 'Gemeinsamer Aufenthalt ist möglich' aktivieren.
+                      Dieser Zeitraum überschneidet sich mit einer Buchung von {partyName} vom {range}. Bitte abstimmen oder „Gemeinsamer Aufenthalt ist möglich“ aktivieren.
                     </p>
                   );
                 })
@@ -188,7 +187,9 @@ export function NewBookingForm({
         <p className="mt-4 text-lg">Du möchtest folgenden Zeitraum anfragen:</p>
         <p className="mt-3 text-2xl font-bold">{startDate || "Startdatum"} bis {endDate || "Enddatum"}</p>
         <p className="mt-3 text-lg">P-Zeit: {isPriority ? "Ja" : "Nein"}</p>
-        {isPriority ? <p className="mt-2 text-lg">Verbleibende P-Tage: {remainingPriorityDays}</p> : null}
+        {isPriority ? selectedYears.map((year) => (
+          <p key={year} className="mt-2 text-lg">Verbleibende P-Tage {year}: {Math.max(42 - getTotalPriorityDaysUsedIncludingForfeitures(existingBookings, forfeitures, profile.family_party_id ?? "", year), 0)}</p>
+        )) : null}
         {days > 0 ? <p className="mt-2 text-lg">Dauer: {days} Tage</p> : null}
         <p className="mt-5 text-gray-700">
           Bitte teile deine Anfrage nach dem Speichern in der Familiengruppe. Die Widerspruchsfrist beginnt mit dem Speichern. Wenn innerhalb von drei Tagen niemand widerspricht, wird sie automatisch bestätigt.

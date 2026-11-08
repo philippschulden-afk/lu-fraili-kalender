@@ -1,19 +1,19 @@
 import { PageShell, requireProfile } from "@/components/page-shell";
 import { NewBookingForm } from "@/components/new-booking-form";
-import { getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
 import type { Booking, FamilyParty, PriorityDayForfeiture } from "@/lib/types";
 
 export default async function NewBookingPage() {
   const { supabase, profile } = await requireProfile();
-  const { data: familyPartiesData } = await supabase.from("family_parties").select("*").order("name").returns<FamilyParty[]>();
-  const { data: bookingsData } = await supabase.from("bookings").select("*, family_parties(*)").returns<Booking[]>();
-  const { data: forfeituresData } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
+  const { data: familyPartiesData, error: partiesError } = await supabase.from("family_parties").select("*").order("name").returns<FamilyParty[]>();
+  const { data: bookingsData, error: bookingsError } = await supabase.from("bookings").select("*, family_parties(*)").returns<Booking[]>();
+  const { data: forfeituresData, error: forfeituresError } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
+  if (partiesError || bookingsError || forfeituresError) throw new Error("Der Zeitraum konnte nicht geprüft werden.");
   const familyParties = familyPartiesData ?? [];
   const bookings = bookingsData ?? [];
   const forfeitures = forfeituresData ?? [];
-  const { data: settingData } = await supabase.from("app_settings").select("value").eq("key", "september_rule_enabled").single();
+  const { data: settingData, error: settingError } = await supabase.from("app_settings").select("value").eq("key", "september_rule_enabled").single();
+  if (settingError) throw new Error("Die Regeln konnten nicht geladen werden.");
   const setting = settingData as { value: boolean } | null;
-  const used = profile?.family_party_id ? getTotalPriorityDaysUsedIncludingForfeitures(bookings, forfeitures, profile.family_party_id, new Date().getFullYear()) : 0;
 
   return (
     <PageShell>
@@ -22,7 +22,7 @@ export default async function NewBookingPage() {
         <NewBookingForm
           profile={profile}
           familyParties={familyParties}
-          remainingPriorityDays={Math.max(42 - used, 0)}
+          forfeitures={forfeitures}
           septemberRuleEnabled={setting?.value ?? true}
           existingBookings={bookings}
         />

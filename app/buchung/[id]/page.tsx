@@ -26,24 +26,26 @@ type SelectedBookingRow = Pick<
   family_parties?: Booking["family_parties"];
 };
 
-export default async function BookingDetailPage({ params }: { params: { id: string } }) {
+export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { supabase, profile } = await requireProfile();
-  const { data: bookingData } = await supabase
+  const { data: bookingData, error: bookingError } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
   const booking = bookingData as SelectedBookingRow | null;
+  if (bookingError && bookingError.code !== "PGRST116") throw new Error("Die Buchung konnte nicht geladen werden.");
   if (!booking || !profile) notFound();
 
-  const { data: overlappingBookingsData } = await supabase
+  const { data: overlappingBookingsData, error: overlapsError } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
     .neq("id", booking.id)
     .lte("start_date", booking.end_date)
     .gte("end_date", booking.start_date)
     .returns<Booking[]>();
-  const { data: forfeituresData } = await supabase
+  const { data: forfeituresData, error: forfeituresError } = await supabase
     .from("priority_day_forfeitures")
     .select("*")
     .eq("booking_id", booking.id)
@@ -54,13 +56,14 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
     .eq("booking_id", booking.id)
     .order("created_at")
     .returns<Objection[]>();
-  const { data: events = [] } = await supabase
+  const { data: events = [], error: eventsError } = await supabase
     .from("booking_events")
     .select("*")
     .eq("booking_id", booking.id)
     .order("created_at", { ascending: false })
     .returns<BookingEvent[]>();
   const safeObjections = objections ?? [];
+  if (overlapsError || forfeituresError || eventsError) throw new Error("Die Buchungsdetails konnten nicht geladen werden.");
   const authorIds = Array.from(new Set(safeObjections.map((objection) => objection.created_by)));
   const { data: authorsData } = authorIds.length
     ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", authorIds)
@@ -149,7 +152,7 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
             </div>
           </div>
         </section>
-        <BookingActions booking={booking} profile={profile} objectionCount={safeObjections.length} />
+        {objectionsError ? <p>Die Aktionen sind erst verfügbar, wenn die Widersprüche wieder geladen werden können.</p> : <BookingActions booking={booking} profile={profile} objectionCount={safeObjections.length} />}
       </div>
     </PageShell>
   );

@@ -26,7 +26,8 @@ type SelectedBookingRow = Pick<
   family_parties?: Booking["family_parties"];
 };
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { supabase, user, profile } = await getAuthContext();
   if (!user) return NextResponse.json({ error: "Bitte zuerst anmelden." }, { status: 401 });
 
@@ -34,7 +35,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const reason = String(body.reason ?? "").trim();
   if (reason.length < 3) return NextResponse.json({ error: "Bitte gib einen kurzen Grund ein." }, { status: 400 });
 
-  const { data: bookingData } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", params.id).single();
+  const { data: bookingData } = await supabase.from("bookings").select("*, family_parties(*)").eq("id", id).single();
   const booking = bookingData as SelectedBookingRow | null;
   if (!profile || !booking) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });
   if (booking.family_party_id === profile.family_party_id) return NextResponse.json({ error: "Du kannst deiner eigenen Buchung nicht widersprechen." }, { status: 400 });

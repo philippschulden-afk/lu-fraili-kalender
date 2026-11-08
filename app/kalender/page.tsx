@@ -38,26 +38,28 @@ const compactStatusClasses: Record<BookingStatus, string> = {
 export default async function CalendarPage({
   searchParams
 }: {
-  searchParams: { filter?: string; month?: string; day?: string };
+  searchParams: Promise<{ filter?: string; month?: string; day?: string }>;
 }) {
   const { supabase, profile } = await requireProfile();
-  const selectedFilter = searchParams.filter ?? "alle";
-  const visibleMonth = parseMonthParam(searchParams.month) ?? startOfMonth(new Date());
+  const query = await searchParams;
+  const selectedFilter = query.filter ?? "alle";
+  const visibleMonth = parseMonthParam(query.month) ?? startOfMonth(new Date());
   const monthStart = startOfMonth(visibleMonth);
   const monthEnd = endOfMonth(visibleMonth);
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const gridDays = eachDayOfInterval({ start: gridStart, end: gridEnd });
-  const selectedDay = parseDayParam(searchParams.day) ?? (isSameMonth(new Date(), visibleMonth) ? new Date() : monthStart);
+  const selectedDay = parseDayParam(query.day) ?? (isSameMonth(new Date(), visibleMonth) ? new Date() : monthStart);
   const selectedDayIso = toDateOnlyIso(selectedDay);
 
-  const { data: bookingsData } = await supabase
+  const { data: bookingsData, error } = await supabase
     .from("bookings")
     .select("*, family_parties(*)")
-    .lte("start_date", toDateOnlyIso(monthEnd))
-    .gte("end_date", toDateOnlyIso(monthStart))
+    .lte("start_date", toDateOnlyIso(gridEnd))
+    .gte("end_date", toDateOnlyIso(gridStart))
     .order("start_date", { ascending: true })
     .returns<Booking[]>();
+  if (error) throw new Error("Der Kalender konnte nicht geladen werden.");
   const safeBookings = bookingsData ?? [];
 
   const visibleBookings = safeBookings.filter((booking) => {

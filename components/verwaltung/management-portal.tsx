@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { StartPasswordForm } from "@/components/verwaltung/start-password-form";
 import { formatGermanDate } from "@/lib/date-format";
 import { findBookingConflicts } from "@/lib/conflicts";
-import { calculateBookingDays, isLessThanOneMonthBeforeStart } from "@/lib/rules";
+import { calculateBookingDays, getPriorityDaysUsed, getTotalPriorityDaysUsedIncludingForfeitures, shouldForfeitPriorityDaysOnCancel } from "@/lib/rules";
 import { statusLabels } from "@/lib/status";
 import type { Booking, BookingStatus, FamilyParty, Objection, PriorityDayForfeiture, Profile, UserRole } from "@/lib/types";
 
@@ -53,8 +53,9 @@ export function ManagementPortal({
   const [familyParties, setFamilyParties] = useState(initialFamilyParties);
   const [profiles, setProfiles] = useState(initialProfiles);
   const [bookings, setBookings] = useState(initialBookings);
+  const [savedBookings, setSavedBookings] = useState(initialBookings);
   const [objections] = useState(initialObjections);
-  const [forfeitures] = useState(initialForfeitures);
+  const [forfeitures, setForfeitures] = useState(initialForfeitures);
   const [septemberEnabled, setSeptemberEnabled] = useState(septemberRuleEnabled);
   const [messages, setMessages] = useState<Record<string, Message>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -84,7 +85,7 @@ export function ManagementPortal({
 
   async function readResult(response: Response) {
     const result = await response.json().catch(() => ({}));
-    return result as { message?: string; error?: string; warning?: string; familyParty?: PartyRow; profile?: Profile };
+    return result as { message?: string; error?: string; warning?: string; familyParty?: PartyRow; profile?: Profile; booking?: Booking; forfeitures?: PriorityDayForfeiture[] };
   }
 
   async function createParty() {
@@ -205,8 +206,8 @@ export function ManagementPortal({
     const booking = bookings.find((item) => item.id === bookingId);
     if (!booking) return;
     const payload = { ...booking, status: statusOverride ?? booking.status };
-    const originalBooking = initialBookings.find((item) => item.id === bookingId);
-    if (originalBooking?.is_priority && originalBooking.status === "bestaetigt" && isLessThanOneMonthBeforeStart(originalBooking.start_date)) {
+    const originalBooking = savedBookings.find((item) => item.id === bookingId);
+    if (originalBooking && shouldForfeitPriorityDaysOnCancel(originalBooking)) {
       const dateChanged = originalBooking.start_date !== payload.start_date || originalBooking.end_date !== payload.end_date;
       const pRemoved = !payload.is_priority;
       const reduced = payload.is_priority && calculateBookingDays(payload.start_date, payload.end_date) < calculateBookingDays(originalBooking.start_date, originalBooking.end_date);
@@ -227,8 +228,12 @@ export function ManagementPortal({
       setMessage(`booking-${bookingId}`, { type: "error", text: result.error ?? "Die Buchung konnte nicht gespeichert werden." });
       return;
     }
-    setBookings((current) => current.map((item) => (item.id === bookingId ? { ...payload, status: payload.status } : item)));
-    setMessage(`booking-${bookingId}`, { type: "success", text: result.warning ?? "Änderung gespeichert." });
+    if (result.booking) {
+      setBookings((current) => current.map((item) => item.id === bookingId ? result.booking! : item));
+      setSavedBookings((current) => current.map((item) => item.id === bookingId ? result.booking! : item));
+    }
+    if (result.forfeitures) setForfeitures((current) => [...current.filter((row) => row.booking_id !== bookingId), ...result.forfeitures!]);
+    setMessage(`booking-${bookingId}`, { type: "success", text: result.warning ?? result.message ?? "Änderung gespeichert." });
   }
 
   async function deleteBooking(bookingId: string) {
@@ -242,6 +247,8 @@ export function ManagementPortal({
       return;
     }
     setBookings((current) => current.filter((booking) => booking.id !== bookingId));
+    setSavedBookings((current) => current.filter((booking) => booking.id !== bookingId));
+    setForfeitures((current) => current.filter((row) => row.booking_id !== bookingId));
     setMessage("bookings", { type: "success", text: "Änderung gespeichert." });
   }
 
@@ -284,9 +291,7 @@ export function ManagementPortal({
   }
 
   function pDaysUsedForParty(partyId: string) {
-    return bookings
-      .filter((booking) => booking.family_party_id === partyId && booking.is_priority && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear)
-      .reduce((sum, booking) => sum + calculateBookingDays(booking.start_date, booking.end_date), 0);
+    return getPriorityDaysUsed(savedBookings, partyId, priorityYear);
   }
 
   function forfeitedDaysForParty(partyId: string) {
@@ -329,7 +334,7 @@ export function ManagementPortal({
                   </label>
                   <Metric label="Nutzer" value={userCount} />
                   <Metric label="Buchungen" value={bookingCount} />
-                  <Metric label={`P-Tage ${year}`} value={`${party.priorityDaysUsed} / 42`} />
+                  <Metric label={`P-Tage ${year}`} value={`${getTotalPriorityDaysUsedIncludingForfeitures(savedBookings, forfeitures, party.id, year)} / 42`} />
                   <button className="focus-ring rounded-lg bg-teal-700 px-5 py-3 text-lg font-bold text-white disabled:bg-gray-400" disabled={savingKey === `party-${party.id}`} onClick={() => saveParty(party.id)}>
                     Speichern
                   </button>
@@ -513,7 +518,7 @@ export function ManagementPortal({
             const activeUsed = pDaysUsedForParty(party.id);
             const forfeitedUsed = forfeitedDaysForParty(party.id);
             const used = activeUsed + forfeitedUsed;
-            const activePriorityBookings = bookings.filter((booking) => booking.family_party_id === party.id && booking.is_priority && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) && new Date(`${booking.start_date}T00:00:00`).getFullYear() === priorityYear);
+            const activePriorityBookings = savedBookings.filter((booking) => booking.family_party_id === party.id && booking.is_priority && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) && booking.start_date <= `${priorityYear}-12-31` && booking.end_date >= `${priorityYear}-01-01`);
             return (
               <div key={party.id} className="rounded-lg border border-teal-100 p-4">
                 <h3 className="text-xl font-bold">{party.name}</h3>

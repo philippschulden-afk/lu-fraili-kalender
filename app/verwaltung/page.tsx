@@ -8,13 +8,14 @@ export default async function ManagementPage() {
   const { supabase, profile } = await requireProfile();
   if (profile?.role !== "schlichter") redirect("/dashboard");
 
-  const { data: familyPartiesData } = await supabase.from("family_parties").select("*").order("name").returns<FamilyParty[]>();
-  const { data: profilesData } = await supabase.from("profiles").select("*").order("email").returns<Profile[]>();
-  const { data: bookingsData } = await supabase.from("bookings").select("*, family_parties(*)").order("start_date", { ascending: true }).returns<Booking[]>();
-  const { data: objectionsData } = await supabase.from("objections").select("*").returns<Objection[]>();
-  const { data: forfeituresData } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
-  const { data: settingData } = await supabase.from("app_settings").select("value").eq("key", "september_rule_enabled").single();
+  const { data: familyPartiesData, error: familyPartiesDataError } = await supabase.from("family_parties").select("*").order("name").returns<FamilyParty[]>();
+  const { data: profilesData, error: profilesDataError } = await supabase.from("profiles").select("*").order("email").returns<Profile[]>();
+  const { data: bookingsData, error: bookingsDataError } = await supabase.from("bookings").select("*, family_parties(*)").order("start_date", { ascending: true }).returns<Booking[]>();
+  const { data: objectionsData, error: objectionsDataError } = await supabase.from("objections").select("*").returns<Objection[]>();
+  const { data: forfeituresData, error: forfeituresDataError } = await supabase.from("priority_day_forfeitures").select("*").returns<PriorityDayForfeiture[]>();
+  const { data: settingData, error: settingDataError } = await supabase.from("app_settings").select("value").eq("key", "september_rule_enabled").single();
 
+  if (familyPartiesDataError || profilesDataError || bookingsDataError || objectionsDataError || forfeituresDataError || settingDataError) throw new Error("Die Verwaltung konnte nicht geladen werden.");
   const familyParties = familyPartiesData ?? [];
   const profiles = profilesData ?? [];
   const bookings = bookingsData ?? [];

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   });
 
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     await supabase.auth.signOut();
   } catch {
     // Logout should still clear the family cookie even if Supabase is not configured.

@@ -7,7 +7,7 @@ import { POST } from "@/app/api/verwaltung/profiles/[id]/password/route";
 
 const password = "Chosen-test-password-9";
 const profile = { id: "profile-id", user_id: "auth-id", full_name: "Franziska", email: "franzi@example.com", family_party_id: "party-id", role: "user" };
-const params = { params: { id: profile.id } };
+const params = { params: Promise.resolve({ id: profile.id }) };
 const request = (body: unknown = { password }) => new Request("http://localhost/api/verwaltung/profiles/profile-id/password", {
   method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body)
 });

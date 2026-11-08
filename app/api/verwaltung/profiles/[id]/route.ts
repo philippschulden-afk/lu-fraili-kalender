@@ -5,7 +5,8 @@ import type { Profile, UserRole } from "@/lib/types";
 
 const allowedRoles: UserRole[] = ["user", "schlichter"];
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const context = await getSchlichterContext();
   if (context.error) return NextResponse.json({ error: context.error }, { status: context.status });
 
@@ -19,9 +20,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const admin = createSupabaseAdminClient();
-  const { data: profilesData } = await admin.from("profiles").select("*").returns<Profile[]>();
+  const { data: profilesData, error: profilesError } = await admin.from("profiles").select("*").returns<Profile[]>();
+  if (profilesError) return NextResponse.json({ error: "Die Nutzer konnten nicht geprüft werden." }, { status: 500 });
   const profiles = profilesData ?? [];
-  const existingProfile = profiles.find((profile) => profile.id === params.id);
+  const existingProfile = profiles.find((profile) => profile.id === id);
 
   if (!existingProfile) {
     return NextResponse.json({ error: "Der Nutzer wurde nicht gefunden." }, { status: 404 });
@@ -39,21 +41,23 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       family_party_id: familyPartyId,
       role
     })
-    .eq("id", params.id);
+    .eq("id", id);
 
-  if (error) return NextResponse.json({ error: "Die Änderung konnte nicht gespeichert werden." }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message === "Es muss mindestens ein Schlichter bestehen bleiben." ? error.message : "Die Änderung konnte nicht gespeichert werden." }, { status: error.code === "P0001" ? 400 : 500 });
 
   return NextResponse.json({ message: "Änderung gespeichert." });
 }
 
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const context = await getSchlichterContext();
   if (context.error) return NextResponse.json({ error: context.error }, { status: context.status });
 
   const admin = createSupabaseAdminClient();
-  const { data: profilesData } = await admin.from("profiles").select("*").returns<Profile[]>();
+  const { data: profilesData, error: profilesError } = await admin.from("profiles").select("*").returns<Profile[]>();
+  if (profilesError) return NextResponse.json({ error: "Die Nutzer konnten nicht geprüft werden." }, { status: 500 });
   const profiles = profilesData ?? [];
-  const existingProfile = profiles.find((profile) => profile.id === params.id);
+  const existingProfile = profiles.find((profile) => profile.id === id);
 
   if (!existingProfile) return NextResponse.json({ error: "Der Nutzer wurde nicht gefunden." }, { status: 404 });
 
@@ -62,8 +66,8 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
     return NextResponse.json({ error: "Es muss mindestens ein Schlichter bestehen bleiben." }, { status: 400 });
   }
 
-  const { error } = await admin.from("profiles").delete().eq("id", params.id);
-  if (error) return NextResponse.json({ error: "Der Nutzer konnte nicht entfernt werden." }, { status: 500 });
+  const { error } = await admin.from("profiles").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message === "Es muss mindestens ein Schlichter bestehen bleiben." ? error.message : "Der Nutzer konnte nicht entfernt werden." }, { status: error.code === "P0001" ? 400 : 500 });
 
   if (existingProfile.user_id) {
     const authDelete = await admin.auth.admin.deleteUser(existingProfile.user_id);

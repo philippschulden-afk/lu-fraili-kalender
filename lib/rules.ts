@@ -17,17 +17,21 @@ export function calculateBookingDays(startDate: string, endDate: string) {
 }
 
 export function getPriorityDaysUsed(bookings: RuleBooking[], familyPartyId: string, year: number) {
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
   return bookings
     .filter((booking) => {
-      const bookingYear = parseISO(booking.start_date).getFullYear();
       return (
         booking.family_party_id === familyPartyId &&
         booking.is_priority &&
-        bookingYear === year &&
+        booking.start_date <= yearEnd && booking.end_date >= yearStart &&
         ["angefragt", "bestaetigt", "klaerung"].includes(booking.status)
       );
     })
-    .reduce((sum, booking) => sum + calculateBookingDays(booking.start_date, booking.end_date), 0);
+    .reduce((sum, booking) => sum + calculateBookingDays(
+      booking.start_date < yearStart ? yearStart : booking.start_date,
+      booking.end_date > yearEnd ? yearEnd : booking.end_date
+    ), 0);
 }
 
 export function calculateDateRangeDeltaDays(oldStart: string, oldEnd: string, newStart: string, newEnd: string) {
@@ -166,21 +170,27 @@ export function isLessThanOneMonthBeforeStart(startDate: string, now: Date = new
 }
 
 export function shouldForfeitPriorityDaysOnCancel(
-  booking: Pick<Booking, "start_date" | "end_date" | "is_priority" | "status">,
+  booking: Pick<Booking, "start_date" | "end_date" | "is_priority" | "status" | "priority_protected_dates" | "priority_protection_start_date">,
   now: Date = new Date()
 ) {
+  const protectedDates = booking.priority_protected_dates ?? [];
+  if (protectedDates.length > 0 && !["storniert", "abgelehnt"].includes(booking.status)) {
+    return isLessThanOneMonthBeforeStart(booking.priority_protection_start_date ?? booking.start_date, now);
+  }
   return booking.is_priority && booking.status === "bestaetigt" && isLessThanOneMonthBeforeStart(booking.start_date, now);
 }
 
 export function shouldForfeitPriorityDaysOnChange(input: {
-  original: Pick<Booking, "start_date" | "end_date" | "is_priority" | "status">;
+  original: Pick<Booking, "start_date" | "end_date" | "is_priority" | "status" | "priority_protected_dates" | "priority_protection_start_date">;
   updated: Pick<Booking, "start_date" | "end_date" | "is_priority">;
   now?: Date;
 }) {
-  if (!input.original.is_priority || input.original.status !== "bestaetigt") return false;
-  if (!isLessThanOneMonthBeforeStart(input.original.start_date, input.now ?? new Date())) return false;
+  if (!shouldForfeitPriorityDaysOnCancel(input.original, input.now)) return false;
 
   if (!input.updated.is_priority) return true;
+  if (input.original.priority_protected_dates?.length) {
+    return input.original.priority_protected_dates.some((date) => date < input.updated.start_date || date > input.updated.end_date);
+  }
 
   return calculateForfeitedDaysOnEdit(
     input.original.start_date,
