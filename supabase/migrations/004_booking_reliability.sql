@@ -14,12 +14,15 @@ create unique index if not exists priority_day_forfeitures_booking_date_idx
   where forfeited_date is not null;
 
 create or replace function public.guard_booking_status_update()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security invoker set search_path = public as $$
 begin
-  if auth.role() = 'service_role' then return new; end if;
+  if current_user in ('service_role', 'postgres', 'supabase_admin') then return new; end if;
   raise exception 'Buchungen bitte über die App ändern.';
 end;
 $$;
+
+revoke all on function public.guard_booking_status_update() from public, anon, authenticated;
+alter function public.touch_updated_at() set search_path = public;
 
 -- All writes go through the checked server routes. RLS remains enabled for reads.
 revoke insert, update, delete on public.bookings from anon, authenticated;
