@@ -10,6 +10,8 @@ export type RuleBooking = Pick<
 export function calculateBookingDays(startDate: string, endDate: string) {
   const start = parseISO(startDate);
   const end = parseISO(endDate);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) return 0;
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return 0;
   const days = differenceInCalendarDays(end, start) + 1;
   return Math.max(days, 0);
 }

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
 import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
+import { recordEmailResult } from "@/lib/booking-notifications";
+import { bookingSaveError } from "@/lib/booking-store";
 import type { Booking } from "@/lib/types";
 
 type SelectedBookingRow = Pick<
@@ -39,28 +41,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (booking.status !== "angefragt") return NextResponse.json({ error: "Dieser Buchung kann nicht mehr widersprochen werden." }, { status: 400 });
 
   const admin = createSupabaseAdminClient();
-  await admin.from("objections").insert({ booking_id: booking.id, created_by: user.id, reason });
-  await admin.from("booking_events").insert({
-    booking_id: booking.id,
-    event_type: "objected",
-    message: `Widerspruch angelegt. Grund: ${reason}`,
-    created_by: user.id
+  const { error } = await admin.rpc("add_booking_objection", {
+    p_booking_id: booking.id, p_actor_id: user.id, p_reason: reason
   });
-
-  const recipients = await getNotificationRecipients(admin, { excludeUserId: user.id });
-  await sendBookingNotification({
-    to: recipients,
-    type: "objection_created",
-    booking,
-    partyName: booking.family_parties?.name ?? "Familienpartei",
-    reason
-  });
-  await admin.from("booking_events").insert({
-    booking_id: booking.id,
-    event_type: "email_objection",
-    message: "E-Mail wegen Widerspruch versendet.",
-    created_by: user.id
-  });
+  if (error) {
+    const failure = bookingSaveError(error);
+    return NextResponse.json({ error: failure.error }, { status: failure.status });
+  }
+  try {
+    const recipients = await getNotificationRecipients(admin, { excludeUserId: user.id });
+    const result = await sendBookingNotification({ to: recipients, type: "objection_created", booking,
+      partyName: booking.family_parties?.name ?? "Familienpartei", reason });
+    await recordEmailResult(admin, booking.id, user.id, result, "email_objection");
+  } catch {
+    console.error("Widerspruch gespeichert; E-Mail konnte nicht versendet werden.");
+  }
 
   return NextResponse.json({ ok: true });
 }

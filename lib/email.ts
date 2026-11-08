@@ -32,15 +32,19 @@ export async function sendEmail(input: { to: string[]; subject: string; html: st
   if (recipients.length === 0) return { ok: true, skipped: true };
 
   try {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM ?? "Lu Fraili <onboarding@resend.dev>",
       to: recipients,
       subject: input.subject,
       html: shell(input.html)
     });
+    if (error) {
+      console.error("E-Mail-Versand fehlgeschlagen:", error.name);
+      return { ok: false, error: "E-Mail konnte nicht versendet werden." };
+    }
     return { ok: true };
   } catch (error) {
-    console.error("E-Mail-Versand fehlgeschlagen:", error);
+    console.error("E-Mail-Versand fehlgeschlagen.");
     return { ok: false, error: "E-Mail konnte nicht versendet werden." };
   }
 }
@@ -54,7 +58,8 @@ export async function getNotificationRecipients(
     userIds?: string[];
   } = {}
 ) {
-  const { data } = await supabase.from("profiles").select("*");
+  const { data, error } = await supabase.from("profiles").select("*");
+  if (error) throw new Error("E-Mail-Empfänger konnten nicht geladen werden.");
   const profiles = (data ?? []) as Profile[];
   return uniqueEmails(
     profiles
@@ -62,6 +67,7 @@ export async function getNotificationRecipients(
         const maybeActive = profile as Profile & { is_active?: boolean | null };
         if (maybeActive.is_active === false) return false;
         if (!profile.email) return false;
+        if (profile.email.endsWith(".local")) return false;
         if (options.excludeUserId && profile.user_id === options.excludeUserId) return false;
         if (options.onlySchlichter && profile.role !== "schlichter") return false;
         if (options.familyPartyIds?.length && (!profile.family_party_id || !options.familyPartyIds.includes(profile.family_party_id))) return false;

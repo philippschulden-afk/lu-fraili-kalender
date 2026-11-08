@@ -147,13 +147,27 @@ Nach Auswahl der Person und Eingabe des gemeinsamen Passworts wird eine sichere 
 
 ## 5. Datenbank-Migrationen
 
-Die SQL-Datei liegt hier:
+Die Migrationen werden in dieser Reihenfolge im Supabase SQL Editor ausgeführt:
 
 ```text
 supabase/migrations/001_initial_schema.sql
+supabase/migrations/003_priority_day_forfeitures.sql
+supabase/migrations/004_booking_reliability.sql
 ```
 
-Sie kann direkt im Supabase SQL Editor ausgeführt werden.
+Bei einem bestehenden Projekt nur die noch nicht ausgeführten Migrationen starten. Insbesondere `001` nicht erneut ausführen.
+
+### Aktualisierung der Buchungsverwaltung
+
+Vor dem Deployment dieser Version `004_booking_reliability.sql` ausführen. Sie erhält vorhandene Buchungen und Verfallsbuchungen.
+
+Die neue Version speichert Buchung, erneute Anfrage, Verfall und Verlauf gemeinsam in einer Datenbanktransaktion. Gleichzeitige Anfragen werden für die Regelprüfung nacheinander verarbeitet. Bestätigte P-Zeiten bleiben gesperrt. Angefragte P-Zeiten belegen das Jahreskontingent bereits während der Widerspruchsfrist.
+
+Verfallene Tage werden künftig mit ihrem konkreten Datum gespeichert. Weitere Änderungen derselben Buchung können zusätzliche Tage verfallen lassen; dasselbe Datum wird dabei nicht mehrfach als Verfall eingetragen. Vorhandene ältere Sammelbeträge bleiben erhalten; ihre einzelnen Tage lassen sich nachträglich nicht zuverlässig rekonstruieren.
+
+Schlichter dürfen über die Verwaltung weiterhin die Mengenbegrenzung der P-Tage übersteuern. Überschneidungen mit bereits bestätigten P-Zeiten bleiben auch dort gesperrt.
+
+Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein, auch bei Anmeldung über Google. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. Für E-Mail-Versand werden `RESEND_API_KEY`, `EMAIL_FROM` und `NEXT_PUBLIC_APP_URL` benötigt. Fehlender oder fehlgeschlagener E-Mail-Versand wird im Verlauf als solcher angezeigt.
 
 ## 6. Seed-Daten
 

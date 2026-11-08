@@ -4,7 +4,7 @@ import { PageShell, requireProfile } from "@/components/page-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { BookingActions } from "@/components/booking-actions";
 import { formatGermanDate, formatGermanRange } from "@/lib/date-format";
-import type { Booking, BookingEvent, Objection, PriorityDayForfeiture } from "@/lib/types";
+import type { Booking, BookingEvent, Objection, PriorityDayForfeiture, Profile } from "@/lib/types";
 
 type SelectedBookingRow = Pick<
   Booking,
@@ -48,9 +48,9 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
     .select("*")
     .eq("booking_id", booking.id)
     .returns<PriorityDayForfeiture[]>();
-  const { data: objections = [] } = await supabase
+  const { data: objections, error: objectionsError } = await supabase
     .from("objections")
-    .select("*, profiles(full_name, email)")
+    .select("*")
     .eq("booking_id", booking.id)
     .order("created_at")
     .returns<Objection[]>();
@@ -61,6 +61,12 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
     .order("created_at", { ascending: false })
     .returns<BookingEvent[]>();
   const safeObjections = objections ?? [];
+  const authorIds = Array.from(new Set(safeObjections.map((objection) => objection.created_by)));
+  const { data: authorsData } = authorIds.length
+    ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", authorIds)
+    : { data: [] };
+  const authors = (authorsData ?? []) as Pick<Profile, "user_id" | "full_name" | "email">[];
+  const authorById = new Map(authors.map((author) => [author.user_id, author]));
   const safeEvents = events ?? [];
   const overlappingBookings = overlappingBookingsData ?? [];
   const forfeitures = forfeituresData ?? [];
@@ -123,9 +129,9 @@ export default async function BookingDetailPage({ params }: { params: { id: stri
           <div className="rounded-lg border border-teal-100 bg-white p-5 shadow-sm">
             <h2 className="text-2xl font-bold text-teal-950">Widersprüche</h2>
             <div className="mt-4 space-y-3">
-              {safeObjections.length ? safeObjections.map((objection) => (
+              {objectionsError ? <p>Die Widersprüche konnten nicht geladen werden. Bitte lade die Seite erneut.</p> : safeObjections.length ? safeObjections.map((objection) => (
                 <div key={objection.id} className="rounded-lg bg-orange-50 p-3">
-                  <p className="font-bold">{objection.profiles?.full_name ?? objection.profiles?.email ?? "Familienmitglied"}</p>
+                  <p className="font-bold">{authorById.get(objection.created_by)?.full_name ?? authorById.get(objection.created_by)?.email ?? "Familienmitglied"}</p>
                   <p className="mt-2">{objection.reason}</p>
                 </div>
               )) : <p>Es gibt keine Widersprüche.</p>}
