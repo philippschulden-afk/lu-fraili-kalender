@@ -3,6 +3,9 @@ import type { Booking, BookingStatus, Profile } from "@/lib/types";
 import { formatGermanRange } from "@/lib/date-format";
 import { statusLabels } from "@/lib/status";
 
+// Booking announcements are shared manually in WhatsApp; Supabase Auth is separate.
+export const EMAIL_NOTIFICATIONS_ENABLED = false;
+
 export type EmailResult = {
   ok: boolean;
   skipped?: boolean;
@@ -21,6 +24,7 @@ function getResend() {
 }
 
 export async function sendEmail(input: { to: string[]; subject: string; html: string }): Promise<EmailResult> {
+  if (!EMAIL_NOTIFICATIONS_ENABLED) return { ok: true, skipped: true };
   const resend = getResend();
   const recipients = uniqueEmails(input.to);
 
@@ -58,6 +62,7 @@ export async function getNotificationRecipients(
     userIds?: string[];
   } = {}
 ) {
+  if (!EMAIL_NOTIFICATIONS_ENABLED) return [];
   const { data, error } = await supabase.from("profiles").select("*");
   if (error) throw new Error("E-Mail-Empfänger konnten nicht geladen werden.");
   const profiles = (data ?? []) as Profile[];

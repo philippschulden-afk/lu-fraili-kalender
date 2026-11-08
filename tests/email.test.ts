@@ -1,48 +1,49 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { BookingSaveResult } from "@/lib/booking-store";
 
-const send = vi.hoisted(() => vi.fn());
-vi.mock("resend", () => ({ Resend: class { emails = { send }; } }));
-import { getNotificationRecipients, sendEmail } from "@/lib/email";
+const resend = vi.hoisted(() => vi.fn());
+vi.mock("resend", () => ({ Resend: resend }));
+import { getNotificationRecipients, sendEmail, sendUnassignedUserEmail } from "@/lib/email";
+import { notifyBookingSave, recordEmailResult } from "@/lib/booking-notifications";
 
-afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); send.mockReset(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
-describe("email delivery", () => {
-  const email = { to: ["peter@example.com"], subject: "Test", html: "<p>Test</p>" };
-
-  it.each(["", "dummy"])("skips sending when key is %s", async (key) => {
+describe("disabled app email notifications", () => {
+  it.each(["", "dummy", "configured-key"])("never contacts Resend with key %s", async (key) => {
     vi.stubEnv("RESEND_API_KEY", key);
-    vi.spyOn(console, "info").mockImplementation(() => {});
-    expect(await sendEmail(email)).toEqual({ ok: true, skipped: true });
-    expect(send).not.toHaveBeenCalled();
+    expect(await sendEmail({ to: ["peter@example.com"], subject: "Test", html: "Test" }))
+      .toEqual({ ok: true, skipped: true });
+    expect(resend).not.toHaveBeenCalled();
   });
 
-  it("recognizes an API error returned without throwing", async () => {
-    vi.stubEnv("RESEND_API_KEY", "test-key");
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    send.mockResolvedValue({ data: null, error: { name: "validation_error" } });
-    expect((await sendEmail(email)).ok).toBe(false);
+  it("does not query profiles for disabled notifications", async () => {
+    const from = vi.fn();
+    expect(await getNotificationRecipients({ from })).toEqual([]);
+    expect(from).not.toHaveBeenCalled();
   });
 
-  it("returns a safe failure when the connection throws", async () => {
-    vi.stubEnv("RESEND_API_KEY", "test-key");
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    send.mockRejectedValue(new Error("Connection failed"));
-    expect((await sendEmail(email)).ok).toBe(false);
+  it("does not write new email history, even for old callers", async () => {
+    const from = vi.fn();
+    const client = { from } as unknown as SupabaseClient;
+    await recordEmailResult(client, "booking", null, { ok: true }, "email_auto_confirmed");
+    await recordEmailResult(client, "booking", null, { ok: false }, "email_failed");
+    expect(from).not.toHaveBeenCalled();
   });
 
-  it("deduplicates real recipients and excludes synthetic family profiles", async () => {
-    const supabase = { from: () => ({ select: async () => ({ data: [
-      { email: "peter@example.com", role: "user" },
-      { email: "peter@example.com", role: "user" },
-      { email: "philipp@familie.lu-fraili.local", role: "schlichter" },
-      { email: "inactive@example.com", is_active: false },
-      { email: "", role: "user" }
-    ], error: null }) }) };
-    expect(await getNotificationRecipients(supabase)).toEqual(["peter@example.com"]);
+  it("does not send or query anything after booking changes or auto-confirmation", async () => {
+    const from = vi.fn();
+    const client = { from } as unknown as SupabaseClient;
+    const saved = { changed: true, forfeited_days: 3 } as BookingSaveResult;
+    await notifyBookingSave(client, saved, null);
+    await notifyBookingSave(client, saved, null, { autoConfirmed: true });
+    expect(from).not.toHaveBeenCalled();
+    expect(resend).not.toHaveBeenCalled();
   });
 
-  it("does not treat a recipient query error as an empty mailing list", async () => {
-    const supabase = { from: () => ({ select: async () => ({ data: null, error: { code: "failed" } }) }) };
-    await expect(getNotificationRecipients(supabase)).rejects.toThrow("Empfänger");
+  it("also disables app messages about unassigned profiles", async () => {
+    expect(await sendUnassignedUserEmail(["peter@example.com"], "new@example.com"))
+      .toEqual({ ok: true, skipped: true });
+    expect(resend).not.toHaveBeenCalled();
   });
 });

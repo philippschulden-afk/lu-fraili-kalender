@@ -53,6 +53,7 @@ export default function RulesPage() {
 
           <RuleSection title="6. Drei-Tage-Frist">
             <p>Neue Buchungen werden zunächst als angefragt eingetragen.</p>
+            <p>Bitte teile deine Anfrage in der Familiengruppe. Die Frist beginnt bereits mit dem Speichern in der App.</p>
             <p>Alle anderen haben <strong>3 Tage</strong> Zeit, zu widersprechen.</p>
             <p>Wenn niemand widerspricht, wird die Buchung automatisch bestätigt.</p>
           </RuleSection>
@@ -96,7 +97,7 @@ export default function RulesPage() {
 
           <RuleSection title="12. Kommunikation">
             <p>Die App ersetzt perspektivisch den bisherigen Kalender.</p>
-            <p>Bei wichtigen Änderungen kann zusätzlich eine WhatsApp-Nachricht geteilt werden.</p>
+            <p>Bitte teile neue Anfragen und wichtige Änderungen per WhatsApp in der Familiengruppe. Die App verschickt keine E-Mail-Benachrichtigungen.</p>
             <p>Die App bleibt aber die maßgebliche Übersicht.</p>
           </RuleSection>
         </div>

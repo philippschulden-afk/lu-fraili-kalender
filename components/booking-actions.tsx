@@ -118,6 +118,9 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
   return (
     <div className="space-y-4 rounded-lg border border-teal-100 bg-white p-5 shadow-sm">
       <h2 className="text-2xl font-bold text-teal-950">Aktionen</h2>
+      {booking.status === "angefragt" && (isOwnBooking || isSameParty) ? (
+        <p className="text-lg font-bold">Bitte teile diese Anfrage in der Familiengruppe. Die Widerspruchsfrist läuft bereits.</p>
+      ) : null}
       <WhatsAppShareButton
         input={{
           type: "generic",
@@ -160,7 +163,7 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
               </label>
               {editCreatesNewRequest ? (
                 <p className="rounded-lg bg-blue-50 p-3 text-blue-950">
-                  Diese Änderung ist größer als 3 Tage. Die Buchung wird wieder als Anfrage an die Familie gesendet.
+                  Diese Änderung ist größer als 3 Tage. Die Buchung wird wieder als Anfrage eingetragen. Bitte teile sie danach in der Familiengruppe. Die Widerspruchsfrist beginnt mit dem Speichern.
                 </p>
               ) : null}
               {editForfeitureWarningApplies ? (

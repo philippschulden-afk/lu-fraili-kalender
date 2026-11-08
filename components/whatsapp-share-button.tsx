@@ -4,10 +4,12 @@ import { buildWhatsAppShareUrl, type WhatsAppBookingShareInput } from "@/lib/wha
 
 export function WhatsAppShareButton({
   input,
-  label = "Per WhatsApp teilen"
+  label = "Per WhatsApp teilen",
+  prominent = false
 }: {
   input: WhatsAppBookingShareInput;
   label?: string;
+  prominent?: boolean;
 }) {
   const shareUrl = buildWhatsAppShareUrl(input);
   const hasValidShareUrl = shareUrl.startsWith("https://wa.me/?text=");
@@ -17,7 +19,7 @@ export function WhatsAppShareButton({
   return (
     <div className="rounded-lg border border-teal-100 bg-paper p-3">
       <button
-        className="focus-ring rounded-lg border border-teal-700 bg-white px-4 py-3 font-bold text-teal-900"
+        className={`focus-ring rounded-lg border border-teal-700 px-4 py-3 font-bold ${prominent ? "w-full bg-teal-700 text-lg text-white hover:bg-teal-800" : "bg-white text-teal-900"}`}
         type="button"
         onClick={() => window.open(shareUrl, "_blank", "noopener,noreferrer")}
       >

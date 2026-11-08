@@ -2,7 +2,7 @@
 
 Ein privater, einfacher Familienkalender für das Ferienhaus in Lu Fraili, Sardinien.
 
-Die App ersetzt die manuelle WhatsApp-Ankündigung: Eine Buchung wird zuerst angefragt, alle anderen Familienparteien werden per E-Mail informiert und haben drei Tage Zeit für einen Widerspruch. Ohne Widerspruch bestätigt die App die Buchung automatisch einmal täglich.
+Eine Buchung wird zuerst angefragt. Die anfragende Person teilt die Anfrage über den WhatsApp-Teilen-Button in der Familiengruppe. Die Drei-Tage-Frist beginnt bereits beim Speichern in der App, nicht erst beim Teilen. Ohne Widerspruch bestätigt die App die Buchung automatisch einmal täglich. Die App ist die verbindliche Übersicht; sie verschickt keine E-Mail-Benachrichtigungen und keine automatischen WhatsApp-Nachrichten.
 
 ## 1. Lokale Installation
 
@@ -10,7 +10,7 @@ Voraussetzungen:
 
 - Node.js 20 oder neuer
 - Ein Supabase-Projekt
-- Ein Resend-Konto für E-Mails
+- Kein Resend-Konto erforderlich
 
 Installation:
 
@@ -106,8 +106,6 @@ Diese Werte müssen lokal in `.env.local` und bei Vercel als Environment Variabl
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-RESEND_API_KEY=
-EMAIL_FROM=Lu Fraili <buchungen@example.com>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 CRON_SECRET=change-me
 TEST_INVITE_EMAIL=
@@ -119,7 +117,7 @@ DEFAULT_USER_PASSWORD=
 Wichtig:
 
 - `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY` dürfen im Browser sichtbar sein.
-- `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` und `CRON_SECRET` dürfen nicht im Browser stehen.
+- `SUPABASE_SERVICE_ROLE_KEY` und `CRON_SECRET` dürfen nicht im Browser stehen.
 - In Vercel sollte `NEXT_PUBLIC_APP_URL` die echte Vercel-Adresse sein.
 - `TEST_INVITE_EMAIL` wird nur lokal für den Invite/Password Flow Test verwendet.
 - `FAMILY_LOGIN_MODE=true` aktiviert den einfachen Familien-Login.
@@ -167,7 +165,7 @@ Verfallene Tage werden künftig mit ihrem konkreten Datum gespeichert. Weitere �
 
 Schlichter dürfen über die Verwaltung weiterhin die Mengenbegrenzung der P-Tage übersteuern. Überschneidungen mit bereits bestätigten P-Zeiten bleiben auch dort gesperrt.
 
-Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein, auch bei Anmeldung über Google. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. Für E-Mail-Versand werden `RESEND_API_KEY`, `EMAIL_FROM` und `NEXT_PUBLIC_APP_URL` benötigt. Fehlender oder fehlgeschlagener E-Mail-Versand wird im Verlauf als solcher angezeigt.
+Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein, auch bei Anmeldung über Google. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. E-Mail-Benachrichtigungen der App sind abgeschaltet, auch wenn alte Resend-Zugangsdaten noch gesetzt sind. Es entstehen keine neuen E-Mail-Vermerke im Buchungsverlauf; alte Einträge bleiben erhalten.
 
 ## 6. Seed-Daten
 
@@ -190,24 +188,15 @@ Enthalten sind:
 
 Hinweis: Die Seed-E-Mails sind Platzhalter wie `peter@example.com`. Nach echten Google-Anmeldungen können die echten Profile in der Verwaltung zugeordnet und als Schlichter markiert werden.
 
-## 7. Resend E-Mail Setup
+## 7. Benachrichtigungen und WhatsApp
 
-1. Resend-Konto erstellen.
-2. Absender-Domain einrichten oder zum Testen eine erlaubte Testadresse verwenden.
-3. API Key erzeugen.
-4. `RESEND_API_KEY` setzen.
-5. `EMAIL_FROM` setzen, zum Beispiel:
+Die App verschickt keine E-Mail-Benachrichtigungen, auch nicht bei Widersprüchen, Bestätigungen, Änderungen oder Stornierungen. `RESEND_API_KEY` und `EMAIL_FROM` werden nicht mehr benötigt. Vorhandene Werte können entfernt werden; sie aktivieren den Versand nicht wieder.
 
-```text
-Lu Fraili <buchungen@deine-domain.de>
-```
+Nach dem Speichern einer Anfrage zeigt die App einen deutlichen Hinweis und einen WhatsApp-Teilen-Button. WhatsApp öffnet sich mit einem vorbereiteten Text. Die Person muss die Familiengruppe auswählen und die Nachricht selbst senden. Es werden weder Telefonnummern noch WhatsApp-Daten gespeichert.
 
-E-Mails werden verschickt bei:
+Die Drei-Tage-Frist und die tägliche automatische Bestätigung bleiben unverändert. Auch nach größeren Buchungsänderungen die neue Anfrage wieder in der Gruppe teilen. Die Familie sollte offene Anfragen und Widersprüche regelmäßig in der App prüfen.
 
-- neuer Buchungsanfrage
-- Widerspruch
-- automatischer Bestätigung
-- Stornierung
+Supabase Auth bleibt davon unberührt: Einladungen und Passwort-Zurücksetzen nutzen weiterhin Supabase-E-Mails.
 
 ## 8. Vercel Deployment
 
@@ -298,7 +287,7 @@ Dieses MVP ist absichtlich einfach gehalten.
 Noch nicht enthalten:
 
 - Google Calendar Sync
-- WhatsApp-Integration
+- automatischer WhatsApp-Versand (manuelles Teilen ist vorhanden)
 - Push-Benachrichtigungen
 - komplexe Rollen
 - Zahlungen
@@ -310,7 +299,7 @@ Bewusst einfach gehalten:
 - automatische Bestätigung läuft einmal täglich
 - Schlichter-Verwaltung ist schlicht
 - neue Nutzer werden nach der ersten Anmeldung zugeordnet
-- E-Mail ist der einzige automatische Benachrichtigungskanal
+- keine automatischen Benachrichtigungen; Anfragen werden manuell in WhatsApp geteilt
 
 ## 13. Später Google Calendar Sync hinzufügen
 

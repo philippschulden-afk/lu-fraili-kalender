@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findBookingConflicts } from "@/lib/conflicts";
-import { getNotificationRecipients, sendBookingNotification, type EmailResult } from "@/lib/email";
+import { EMAIL_NOTIFICATIONS_ENABLED, getNotificationRecipients, sendBookingNotification, type EmailResult } from "@/lib/email";
 import type { BookingSaveResult } from "@/lib/booking-store";
 import type { Booking } from "@/lib/types";
 
 export async function recordEmailResult(supabase: SupabaseClient, bookingId: string, actorId: string | null, result: EmailResult, eventType: string) {
+  if (!EMAIL_NOTIFICATIONS_ENABLED) return;
   const message = !result.ok ? "E-Mail-Versand fehlgeschlagen."
     : result.skipped ? "E-Mail-Versand wurde übersprungen." : "E-Mail wurde zum Versand angenommen.";
   const { error } = await supabase.from("booking_events").insert({ booking_id: bookingId, created_by: actorId, event_type: eventType, message });
@@ -17,7 +18,7 @@ export async function notifyBookingSave(
   actorId: string | null,
   options: { previous?: Booking; autoConfirmed?: boolean } = {}
 ) {
-  if (!saved.changed) return;
+  if (!EMAIL_NOTIFICATIONS_ENABLED || !saved.changed) return;
   const { booking } = saved;
   const partyName = booking.family_parties?.name ?? "Familienpartei";
   try {

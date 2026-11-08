@@ -191,11 +191,12 @@ export function NewBookingForm({
         {isPriority ? <p className="mt-2 text-lg">Verbleibende P-Tage: {remainingPriorityDays}</p> : null}
         {days > 0 ? <p className="mt-2 text-lg">Dauer: {days} Tage</p> : null}
         <p className="mt-5 text-gray-700">
-          Diese Anfrage wird an alle Familienparteien geschickt. Wenn innerhalb von drei Tagen niemand widerspricht, wird sie automatisch bestätigt.
+          Bitte teile deine Anfrage nach dem Speichern in der Familiengruppe. Die Widerspruchsfrist beginnt mit dem Speichern. Wenn innerhalb von drei Tagen niemand widerspricht, wird sie automatisch bestätigt.
         </p>
         {createdBookingId ? (
           <div className="mt-6 rounded-lg bg-green-50 p-4 text-green-900">
             <p className="text-lg font-bold">Buchungsanfrage wurde erstellt.</p>
+            <p className="mt-3 text-lg font-bold">Bitte teile diese Anfrage in der Familiengruppe. Die Widerspruchsfrist läuft bereits.</p>
             {affectedPartyText ? (
               <p className="mt-2">
                 Bitte informiere {affectedPartyText}, dass ihre normale Buchung durch deine P-Zeit betroffen ist.
@@ -203,6 +204,8 @@ export function NewBookingForm({
             ) : null}
             <div className="mt-3">
               <WhatsAppShareButton
+                label="In der Familiengruppe teilen"
+                prominent
                 input={{
                   type: "new_request",
                   bookingId: createdBookingId,
