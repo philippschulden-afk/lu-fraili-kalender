@@ -11,13 +11,18 @@ type AuthUserStatus = {
   last_sign_in_at?: string | null;
 };
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   const context = await getSchlichterContext();
   if (context.error) return NextResponse.json({ error: context.error }, { status: context.status });
 
-  const temporaryPassword = process.env.DEFAULT_USER_PASSWORD;
-  if (!temporaryPassword) {
-    return NextResponse.json({ error: "DEFAULT_USER_PASSWORD ist nicht gesetzt." }, { status: 400 });
+  const body: unknown = await request.json().catch(() => null);
+  const temporaryPassword = body && typeof body === "object" && "password" in body && typeof body.password === "string"
+    ? body.password : "";
+  if (temporaryPassword.length < 8) {
+    return NextResponse.json({ error: "Das Passwort muss mindestens 8 Zeichen lang sein." }, { status: 400 });
+  }
+  if (new TextEncoder().encode(temporaryPassword).length > 72) {
+    return NextResponse.json({ error: "Das Passwort ist zu lang. Bitte verwende ein kürzeres Passwort." }, { status: 400 });
   }
 
   const admin = createSupabaseAdminClient();

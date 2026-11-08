@@ -111,7 +111,6 @@ CRON_SECRET=change-me
 TEST_INVITE_EMAIL=
 FAMILY_LOGIN_MODE=false
 FAMILY_SHARED_PASSWORD=
-DEFAULT_USER_PASSWORD=
 ```
 
 Wichtig:
@@ -122,7 +121,15 @@ Wichtig:
 - `TEST_INVITE_EMAIL` wird nur lokal für den Invite/Password Flow Test verwendet.
 - `FAMILY_LOGIN_MODE=true` aktiviert den einfachen Familien-Login.
 - `FAMILY_SHARED_PASSWORD` ist das gemeinsame Familienpasswort für diesen Modus.
-- `DEFAULT_USER_PASSWORD` ist das Startpasswort, das Schlichter in der Verwaltung für Supabase-Auth-Nutzer setzen können.
+- Startpasswörter werden von Schlichtern direkt in der Verwaltung eingegeben. `DEFAULT_USER_PASSWORD` wird nicht mehr verwendet.
+
+### Startpasswort direkt setzen
+
+Unter `Verwaltung` → `Nutzer verwalten` bei der gewünschten Person `Startpasswort setzen` wählen. Ein eigenes Passwort mit mindestens 8 Zeichen eingeben, wiederholen und das Ersetzen bestätigen. Über `Passwort anzeigen` kann die Eingabe geprüft werden. Nach erfolgreichem Speichern werden die Eingabefelder geleert und geschlossen.
+
+Nur Schlichter dürfen diese Funktion verwenden; der Server prüft die Rolle bei jedem Aufruf. Es wird keine E-Mail verschickt. Der Person ihre hinterlegte E-Mail-Adresse und das gewählte Passwort privat mitteilen. Sie kann sich anschließend über `Mit E-Mail anmelden` anmelden. Fehlende Auth-Zugänge werden wie bisher angelegt, eingeladene Zugänge bestätigt. Das Passwort wird nicht im Profil, im Verlauf oder im Browser-Speicher abgelegt und nicht in Antworten oder Protokollen ausgegeben.
+
+Das Startpasswort läuft nicht automatisch ab; eine Passwortänderung bei der ersten Anmeldung wird derzeit nicht erzwungen. Für jede Person ein eigenes Passwort verwenden.
 
 ### Familien-Login
 
