@@ -24,6 +24,8 @@ const resend = vi.fn();
 
 beforeEach(() => {
   vi.stubEnv("BOOKING_EMAIL_ENABLED", "true");
+  vi.stubEnv("BOOKING_RESEND_API_KEY", undefined);
+  vi.stubEnv("BOOKING_EMAIL_FROM", undefined);
   vi.stubEnv("RESEND_API_KEY", "test-only-key");
   vi.stubEnv("EMAIL_FROM", "Lu Fraili <booking@example.com>");
   vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://lu-fraili.example.com");
@@ -34,6 +36,15 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); resend.mockReset(); });
 
 describe("Resend transport", () => {
+  it("uses the dedicated booking sender and key in preference to the shared settings", async () => {
+    vi.stubEnv("BOOKING_RESEND_API_KEY", "dedicated-test-key");
+    vi.stubEnv("BOOKING_EMAIL_FROM", "Lu Fraili <dedicated@example.com>");
+    resend.mockResolvedValueOnce(Response.json({ data: [{ id: "1" }, { id: "2" }] }));
+    expect(await sendEmail(mail)).toEqual({ ok: true, count: 2 });
+    const [, request] = resend.mock.calls[0];
+    expect(request.headers.Authorization).toBe("Bearer dedicated-test-key");
+    expect(JSON.parse(request.body)[0].from).toBe("Lu Fraili <dedicated@example.com>");
+  });
   it("does not call Resend with the switch off", async () => {
     vi.stubEnv("BOOKING_EMAIL_ENABLED", "false");
     expect(await sendEmail(mail)).toEqual({ ok: true, skipped: true });

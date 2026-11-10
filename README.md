@@ -191,8 +191,8 @@ Hinweis: Die Seed-E-Mails sind Platzhalter wie `peter@example.com`. Echte Profil
 Der E-Mail-Versand ist standardmäßig aus. Für die Produktivumgebung in Vercel:
 
 1. Eine separate Versanddomain in Resend verifizieren. Die DNS-Einträge der Hauptmail nicht verändern.
-2. `RESEND_API_KEY` als geheime Variable ausschließlich für Production hinterlegen. Der Schlüssel benötigt nur Versandzugriff für die verifizierte Subdomain.
-3. `EMAIL_FROM` auf `Lu Fraili <buchungen@lu-fraili.philippschulden.de>` setzen und `NEXT_PUBLIC_APP_URL` mit der produktiven App-Adresse prüfen.
+2. `BOOKING_RESEND_API_KEY` als geheime Variable ausschließlich für Production hinterlegen. Der Schlüssel benötigt nur Versandzugriff für die verifizierte Subdomain. Ohne diese Einstellung verwendet die App weiterhin `RESEND_API_KEY`.
+3. `BOOKING_EMAIL_FROM` für Production auf `Lu Fraili <buchungen@lu-fraili.philippschulden.de>` setzen und `NEXT_PUBLIC_APP_URL` mit der produktiven App-Adresse prüfen. Ohne diese Einstellung verwendet die App weiterhin `EMAIL_FROM`.
 4. `BOOKING_EMAIL_ENABLED=true` setzen und neu bereitstellen. `false` deaktiviert den Buchungsversand beim nächsten Deployment. Einladung und Passwort-Reset von Supabase sind davon unabhängig.
 
 Benachrichtigungen unterscheiden Anfrage, erneute Anfrage nach Änderung, sonstige Änderung, manuelle und automatische Bestätigung, Ablehnung, Stornierung, Widerspruch, Klärung, P-Zeit über normaler Buchung, verfallene P-Tage und Löschung. Der Betreff nennt die handelnde Person (oder die App), Familienpartei und Zeitraum. Ein in der Verwaltung angelegtes Profil ohne Partei meldet die App den Schlichtern. Beim Widerspruch erhalten die betroffene Partei und die Schlichter eine Mail. Bei anderen Buchungsereignissen erhalten freigegebene Familienmitglieder eine Nachricht, normalerweise ohne die handelnde Person. Adressen werden getrennt angeschrieben und dedupliziert.

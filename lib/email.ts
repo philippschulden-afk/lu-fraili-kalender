@@ -35,8 +35,8 @@ export function cleanSubjectPart(value: string) {
 
 export async function sendEmail(input: { to: string[]; subject: string; text: string; html: string; eventKey: string }): Promise<EmailResult> {
   if (!bookingEmailEnabled() || !input.to.length) return { ok: true, skipped: true };
-  const key = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
+  const key = (process.env.BOOKING_RESEND_API_KEY ?? process.env.RESEND_API_KEY)?.trim();
+  const from = (process.env.BOOKING_EMAIL_FROM ?? process.env.EMAIL_FROM)?.trim();
   if (!key || key.toLowerCase() === "dummy" || !from) {
     console.warn(!key || key.toLowerCase() === "dummy" ? "E-Mail-Versand übersprungen: RESEND_API_KEY fehlt." : "E-Mail-Versand übersprungen: EMAIL_FROM fehlt.");
     return { ok: false };
