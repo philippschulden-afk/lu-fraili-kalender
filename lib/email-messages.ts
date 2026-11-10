@@ -19,7 +19,7 @@ export function emailMessage(subject: string, lines: string[], path: string, lin
 
 export function buildBookingEmail(input: {
   type: BookingEmailType; booking: MessageBooking; actorName: string; previous?: MessageBooking;
-  reason?: string; forfeitedDays?: number; affectedParties?: string[];
+  reason?: string; forfeitedDays?: number; affectedParties?: string[]; test?: boolean;
 }) {
   const { booking, type, previous } = input;
   const actor = cleanSubjectPart(input.actorName) || "Ein Familienmitglied";
@@ -54,5 +54,6 @@ export function buildBookingEmail(input: {
   if (type === "commented") lines.push("Der neue Kommentar steht im Verlauf der Buchung.");
   if (type === "displacement") lines.push(`Betroffene normale Buchung${affected ? `: ${affected}` : ""}. Bitte gemeinsam mit den Schlichtern klären. Es wird nichts automatisch storniert oder verkürzt.`);
   if (type === "forfeited") lines.push(`${days} P-Tage werden dem Jahreskontingent nicht wieder gutgeschrieben.`);
+  if (input.test) return emailMessage(`Testmail: ${subject}`, ["Dies ist nur eine Testmail. Es wurde keine Buchung angelegt und niemand sonst wurde benachrichtigt.", ...lines], "/jahresplanung", "Zur Jahresplanung");
   return emailMessage(subject, lines, type === "deleted" ? "/jahresplanung" : `/buchung/${encodeURIComponent(booking.id)}`, type === "deleted" ? "Zur Jahresplanung" : "Zur Buchung");
 }

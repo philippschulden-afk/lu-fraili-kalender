@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { PageShell, requireProfile } from "@/components/page-shell";
 import { ManagementPortal } from "@/components/verwaltung/management-portal";
+import { TestBookingEmailForm } from "@/components/verwaltung/test-booking-email-form";
+import { bookingEmailEnabled } from "@/lib/email";
 import { getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
 import type { Booking, FamilyParty, Objection, PriorityDayForfeiture, Profile } from "@/lib/types";
 
@@ -47,6 +49,7 @@ export default async function ManagementPage() {
         year={year}
         showInviteFlowDebug={process.env.NODE_ENV !== "production"}
       />
+      {bookingEmailEnabled() && <TestBookingEmailForm />}
     </PageShell>
   );
 }
