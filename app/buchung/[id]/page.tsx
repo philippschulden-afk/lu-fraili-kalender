@@ -42,8 +42,8 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     .from("bookings")
     .select("*, family_parties(*)")
     .neq("id", booking.id)
-    .lte("start_date", booking.end_date)
-    .gte("end_date", booking.start_date)
+    .lt("start_date", booking.end_date)
+    .gt("end_date", booking.start_date)
     .returns<Booking[]>();
   const { data: forfeituresData, error: forfeituresError } = await supabase
     .from("priority_day_forfeitures")
