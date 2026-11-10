@@ -60,6 +60,7 @@ export function NewBookingForm({
 
   async function submit() {
     setMessage("");
+    if (blocksSubmission) return;
     if (!intention) {
       setMessage("Bitte bestätige zuerst, dass du den Zeitraum wirklich nutzen möchtest.");
       return;
@@ -163,8 +164,8 @@ export function NewBookingForm({
                     );
                   }
                   return (
-                    <p key={conflict.booking.id} className="rounded-lg bg-amber-50 p-3 text-amber-950">
-                      Dieser Zeitraum überschneidet sich mit einer Buchung von {partyName} vom {range}. Bitte abstimmen oder „Gemeinsamer Aufenthalt ist möglich“ aktivieren.
+                    <p key={conflict.booking.id} className={`rounded-lg p-3 ${conflict.blocks ? "bg-red-50 text-red-900" : "bg-amber-50 text-amber-950"}`}>
+                      Dieser Zeitraum überschneidet sich mit einer Buchung von {partyName} vom {range}. {conflict.blocks ? "Gemeinsamer Aufenthalt muss bei beiden Buchungen erlaubt sein. Bitte stimmt euch vorher ab." : "Bitte stimmt euch zu diesem Zeitraum ab."}
                     </p>
                   );
                 })

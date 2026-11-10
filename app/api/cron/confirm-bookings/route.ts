@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     .eq("status", "angefragt").lte("notice_period_ends_at", new Date().toISOString()).order("created_at");
   if (readError) return NextResponse.json({ error: "Die Anfragen konnten nicht geprüft werden." }, { status: 500 });
   let confirmed = 0;
+  let clarification = 0;
   let failed = 0;
   for (const booking of data ?? []) {
     const { result, error } = await saveBooking(admin, { bookingId: booking.id, changes: {}, autoConfirm: true });
@@ -22,8 +23,13 @@ export async function GET(request: Request) {
       continue;
     }
     if (!result.changed) continue;
+    if (result.booking.status === "klaerung") {
+      clarification += 1;
+      continue;
+    }
+    if (result.booking.status !== "bestaetigt") continue;
     confirmed += 1;
     await notifyBookingSave(admin, result, null, { autoConfirmed: true });
   }
-  return NextResponse.json({ confirmed, failed }, { status: failed > 0 ? 500 : 200 });
+  return NextResponse.json({ confirmed, clarification, failed }, { status: failed > 0 ? 500 : 200 });
 }

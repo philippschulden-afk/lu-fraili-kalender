@@ -95,7 +95,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               <div><dt className="font-bold">P-Zeit</dt><dd>{booking.is_priority ? "Ja" : "Nein"}</dd></div>
               <div><dt className="font-bold">Gemeinsamer Aufenthalt möglich</dt><dd>{booking.shared_stay_allowed ? "Ja" : "Nein"}</dd></div>
               <div><dt className="font-bold">Widerspruchsfrist</dt><dd>{remainingDays === null ? "Keine offene Frist" : `${remainingDays} Tage`}</dd></div>
-              <div><dt className="font-bold">Automatische Bestätigung</dt><dd>{booking.notice_period_ends_at ? formatGermanDate(booking.notice_period_ends_at) : "Nicht geplant"}</dd></div>
+              <div><dt className="font-bold">Automatische Bestätigung</dt><dd>{booking.status === "klaerung" ? "Gestoppt – bitte gemeinsam klären" : booking.status === "angefragt" && booking.notice_period_ends_at ? formatGermanDate(booking.notice_period_ends_at) : "Nicht geplant"}</dd></div>
             </dl>
             {booking.status === "angefragt" && booking.notice_period_ends_at ? (
               <p className="mt-5 rounded-lg bg-blue-50 p-4 text-blue-950">

@@ -73,7 +73,8 @@ begin
   if not exists (select 1 from public.bookings b where b.id = protected_id and b.start_date = start_day) then
     raise exception 'Failed edit partially changed booking';
   end if;
-  delete from public.bookings where family_party_id = other_party;
+  perform public.save_booking(protected_id, moderator, '{"status":"storniert"}', true);
+  update public.bookings set status = 'abgelehnt' where family_party_id = other_party and status = 'angefragt';
 
   -- A newly requested edit must retain protection of the original confirmed days.
   saved := public.save_booking(null, other_actor, jsonb_build_object('start_date', start_day, 'end_date', start_day + 7, 'is_priority', true));

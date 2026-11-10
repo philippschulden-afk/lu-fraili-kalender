@@ -32,7 +32,7 @@ export async function saveBooking(
 
 export function bookingSaveError(error: { code: string; message: string } | null) {
   if (error?.code === "P0001") {
-    return { error: error.message, status: /belegt|inzwischen geändert/.test(error.message) ? 409 : 400 };
+    return { error: error.message, status: /belegt|inzwischen geändert|Gemeinsamer Aufenthalt/.test(error.message) ? 409 : 400 };
   }
   if (error?.code === "PGRST202") console.error("Buchungsverwaltung: Datenbank-Migration 004 fehlt.");
   return { error: "Die Buchung konnte nicht gespeichert werden.", status: 500 };

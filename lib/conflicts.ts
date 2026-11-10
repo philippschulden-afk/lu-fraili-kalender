@@ -15,15 +15,16 @@ export function isOverlappingBooking(
 
 export function hasBlockingPriorityConflict(input: {
   requested: Pick<Booking, "start_date" | "end_date">;
-  existingBookings: Pick<Booking, "id" | "start_date" | "end_date" | "is_priority" | "status">[];
+  existingBookings: Pick<Booking, "id" | "start_date" | "end_date" | "is_priority" | "status" | "priority_protected_dates">[];
   ignoreBookingId?: string;
 }) {
   return input.existingBookings.some(
     (booking) =>
       booking.id !== input.ignoreBookingId &&
-      booking.status === "bestaetigt" &&
+      ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) &&
       booking.is_priority &&
-      isOverlappingBooking(input.requested, booking)
+      ((booking.status === "bestaetigt" && isOverlappingBooking(input.requested, booking)) ||
+        (booking.priority_protected_dates ?? []).some((day) => day >= input.requested.start_date && day <= input.requested.end_date))
   );
 }
 
@@ -40,7 +41,7 @@ export function findBookingConflicts(input: {
   );
 
   return activeBookings.map((booking): ConflictInfo => {
-    if (booking.status === "bestaetigt" && booking.is_priority) {
+    if (hasBlockingPriorityConflict({ requested: input.requested, existingBookings: [booking] })) {
       return { booking, kind: "confirmed_priority", blocks: true };
     }
 
@@ -53,7 +54,10 @@ export function findBookingConflicts(input: {
       return { booking, kind: "priority_displacement", blocks: false };
     }
 
-    return { booking, kind: "normal_overlap", blocks: false };
+    const blocks = !input.requested.is_priority && !booking.is_priority &&
+      booking.family_party_id !== input.requested.family_party_id &&
+      (!input.requested.shared_stay_allowed || !booking.shared_stay_allowed);
+    return { booking, kind: "normal_overlap", blocks };
   });
 }
 

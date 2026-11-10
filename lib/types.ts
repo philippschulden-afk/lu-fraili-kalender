@@ -43,6 +43,8 @@ export type Booking = {
   profiles?: Profile | null;
   priority_protected_dates?: string[] | null;
   priority_protection_start_date?: string | null;
+  notice_start_date?: string | null;
+  notice_end_date?: string | null;
 };
 
 export type Objection = {

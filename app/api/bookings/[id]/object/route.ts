@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const booking = bookingData as SelectedBookingRow | null;
   if (!profile || !booking) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });
   if (booking.family_party_id === profile.family_party_id) return NextResponse.json({ error: "Du kannst deiner eigenen Buchung nicht widersprechen." }, { status: 400 });
-  if (booking.status !== "angefragt") return NextResponse.json({ error: "Dieser Buchung kann nicht mehr widersprochen werden." }, { status: 400 });
+  if (!["angefragt", "klaerung"].includes(booking.status)) return NextResponse.json({ error: "Dieser Buchung kann nicht mehr widersprochen werden." }, { status: 400 });
 
   const admin = createSupabaseAdminClient();
   const { error } = await admin.rpc("add_booking_objection", {

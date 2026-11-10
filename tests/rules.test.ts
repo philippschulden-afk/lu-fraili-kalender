@@ -4,6 +4,7 @@ import {
   bookingsOverlap,
   calculateBookingDays,
   calculateDateRangeDeltaDays,
+  getBookingEditDeltaDays,
   canAutoConfirmBooking,
   checkOverlaps,
   checkSeptemberWarning,
@@ -178,7 +179,7 @@ describe("booking rules", () => {
     expect(conflicts[0]).toMatchObject({ kind: "normal_overlap", blocks: false });
   });
 
-  it("treats overlapping normal bookings as warning only", () => {
+  it("blocks overlapping normal bookings without mutual shared-stay permission", () => {
     const conflicts = findBookingConflicts({
       requested: {
         family_party_id: "peter",
@@ -191,7 +192,40 @@ describe("booking rules", () => {
     });
 
     expect(hasBlockingPriorityConflict({ requested: { start_date: "2026-10-05", end_date: "2026-10-07" }, existingBookings: conflictBookings })).toBe(false);
-    expect(conflicts[0]).toMatchObject({ kind: "normal_overlap", blocks: false });
+    expect(conflicts[0]).toMatchObject({ kind: "normal_overlap", blocks: true });
+  });
+
+  it("measures repeated edits against the announced range", () => {
+    const original = { start_date: "2026-06-14", end_date: "2026-06-21", notice_start_date: "2026-06-13", notice_end_date: "2026-06-20" };
+    expect(getBookingEditDeltaDays(original, "2026-06-15", "2026-06-22")).toBe(4);
+    expect(getBookingEditDeltaDays(original, "2026-06-13", "2026-06-20")).toBe(0);
+  });
+
+  it.each(["angefragt", "klaerung"] as const)("protects retained confirmed dates while %s", (status) => {
+    const protectedBooking: Booking = { ...conflictBookings[0], status, priority_protected_dates: ["2026-08-03", "2026-08-04"] };
+    expect(hasBlockingPriorityConflict({ requested: { start_date: "2026-08-04", end_date: "2026-08-06" }, existingBookings: [protectedBooking] })).toBe(true);
+    expect(hasBlockingPriorityConflict({ requested: { start_date: "2026-08-05", end_date: "2026-08-06" }, existingBookings: [protectedBooking] })).toBe(false);
+  });
+
+  it.each([[false, false, true], [true, false, true], [false, true, true], [true, true, false]])("shared permission requested=%s existing=%s blocks=%s", (requestedShared, existingShared, blocks) => {
+    const existing = { ...conflictBookings[2], shared_stay_allowed: existingShared };
+    const requested = { ...existing, family_party_id: "another-party", shared_stay_allowed: requestedShared };
+    const conflicts = findBookingConflicts({ requested, existingBookings: [existing] });
+    expect(conflicts[0].blocks).toBe(blocks);
+    expect(checkOverlaps({ requested, existingBookings: [existing] }).allowed).toBe(!blocks);
+  });
+
+  it("does not block priority displacement of a normal booking", () => {
+    const existing = conflictBookings[2];
+    const requested = { ...existing, family_party_id: "another-party", is_priority: true };
+    expect(findBookingConflicts({ requested, existingBookings: [existing] })[0]).toMatchObject({ kind: "priority_displacement", blocks: false });
+  });
+
+  it("does not return used priority days after arrival or after the stay", () => {
+    const booking = { start_date: "2026-06-13", end_date: "2026-06-20", is_priority: true, status: "bestaetigt" as const };
+    expect(shouldForfeitPriorityDaysOnCancel(booking, new Date("2026-06-14T12:00:00"))).toBe(true);
+    expect(shouldForfeitPriorityDaysOnCancel(booking, new Date("2026-07-01T12:00:00"))).toBe(true);
+    expect(shouldForfeitPriorityDaysOnCancel(booking, new Date("2026-05-13T12:00:00"))).toBe(false);
   });
 
   it("allows non-overlapping P bookings", () => {
@@ -221,7 +255,7 @@ describe("booking rules", () => {
     expect(result.allowed).toBe(false);
   });
 
-  it("warns for normal overlapping bookings when shared stay is not enabled", () => {
+  it("blocks normal overlapping bookings when shared stay is not enabled", () => {
     const result = checkOverlaps({
       requested: {
         family_party_id: "peter",
@@ -232,8 +266,8 @@ describe("booking rules", () => {
       },
       existingBookings: bookings
     });
-    expect(result.allowed).toBe(true);
-    expect(result.warning).toContain("überschneidet");
+    expect(result.allowed).toBe(false);
+    expect(result.warning).toContain("bei beiden Buchungen");
   });
 
   it("shows the September warning for parties other than Peter and Christoph", () => {

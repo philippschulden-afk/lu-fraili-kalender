@@ -32,6 +32,7 @@ export default function RulesPage() {
             <p>Jede Familienpartei hat pro Kalenderjahr <strong>42 P-Tage</strong>.</p>
             <p><strong>P-Zeit</strong> bedeutet: Diese Buchung hat Vorrang vor normalen Buchungen.</p>
             <p>Eine einzelne P-Buchung darf maximal <strong>21 Tage</strong> dauern.</p>
+            <p>Angefragte P-Tage werden bereits reserviert und zählen bis zur Stornierung oder Ablehnung auf das Kontingent.</p>
           </RuleSection>
 
           <RuleSection title="4. Normale Buchungen">
@@ -47,8 +48,9 @@ export default function RulesPage() {
               <li>P-Zeit über P-Zeit: nicht möglich</li>
               <li>Normale Buchung über P-Zeit: nicht möglich</li>
               <li>P-Zeit über normale Buchung: möglich, aber die betroffene Partei muss informiert werden</li>
-              <li>Normale Buchung über normale Buchung: möglich, wenn gemeinsamer Aufenthalt abgestimmt ist</li>
+              <li>Normale Buchung über normale Buchung: möglich, wenn gemeinsamer Aufenthalt bei beiden Buchungen erlaubt ist</li>
             </ul>
+            <p>Wird eine bestätigte P-Zeit erneut angefragt, bleiben ihre bereits bestätigten, weiterhin enthaltenen Tage geschützt.</p>
           </RuleSection>
 
           <RuleSection title="6. Drei-Tage-Frist">
@@ -56,6 +58,7 @@ export default function RulesPage() {
             <p>Bitte teile deine Anfrage in der Familiengruppe. Die Frist beginnt bereits mit dem Speichern in der App.</p>
             <p>Alle anderen haben <strong>3 Tage</strong> Zeit, zu widersprechen.</p>
             <p>Wenn niemand widerspricht, wird die Buchung automatisch bestätigt.</p>
+            <p>Ist der Zeitraum inzwischen durch eine andere P-Zeit belegt, wird die Anfrage zur gemeinsamen Klärung angezeigt.</p>
           </RuleSection>
 
           <RuleSection title="7. Widerspruch">
@@ -77,10 +80,12 @@ export default function RulesPage() {
             <p>Wird eine bestätigte P-Zeit mindestens <strong>1 Monat</strong> vor Beginn storniert, werden die P-Tage wieder frei.</p>
             <p>Wird eine bestätigte P-Zeit weniger als <strong>1 Monat</strong> vor Beginn storniert oder wesentlich geändert, verfallen die aufgegebenen P-Tage.</p>
             <p>Das bedeutet: Diese P-Tage werden dem Jahreskontingent nicht wieder gutgeschrieben.</p>
+            <p>Das gilt auch, wenn der Aufenthalt bereits begonnen hat oder vorbei ist.</p>
           </RuleSection>
 
           <RuleSection title="10. Änderung von P-Zeit">
             <p>Wenn eine P-Zeit kurzfristig geändert wird, verfallen nur die ursprünglich bestätigten Tage, die dadurch aufgegeben werden.</p>
+            <p>Ändern sich gegenüber dem zuletzt angekündigten oder neu bestätigten Zeitraum mehr als <strong>3 Tage</strong>, beginnt eine neue Anfrage. Mehrere kleine Änderungen werden dabei gemeinsam betrachtet.</p>
             <p>Beispiele:</p>
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>Verlängerung: keine P-Tage verfallen</li>

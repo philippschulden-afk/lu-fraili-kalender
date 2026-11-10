@@ -53,6 +53,19 @@ export function calculateDateRangeDeltaDays(oldStart: string, oldEnd: string, ne
   return Math.max(oldDays + newDays - overlappingDays * 2, 0);
 }
 
+export function getBookingEditDeltaDays(
+  booking: Pick<Booking, "start_date" | "end_date" | "notice_start_date" | "notice_end_date">,
+  newStart: string,
+  newEnd: string
+) {
+  return calculateDateRangeDeltaDays(
+    booking.notice_start_date ?? booking.start_date,
+    booking.notice_end_date ?? booking.end_date,
+    newStart,
+    newEnd
+  );
+}
+
 export function getTotalPriorityDaysUsedIncludingForfeitures(
   bookings: RuleBooking[],
   forfeitures: Pick<PriorityDayForfeiture, "family_party_id" | "year" | "forfeited_days">[],
@@ -125,12 +138,15 @@ export function checkOverlaps(input: {
     };
   }
 
-  const normalOverlap = overlaps.find((booking) => !booking.is_priority);
-  if (normalOverlap && !input.requested.shared_stay_allowed) {
+  const normalOverlap = !input.requested.is_priority && overlaps.find((booking) =>
+    !booking.is_priority && booking.family_party_id !== input.requested.family_party_id &&
+    (!input.requested.shared_stay_allowed || !booking.shared_stay_allowed)
+  );
+  if (normalOverlap) {
     return {
-      allowed: true,
+      allowed: false,
       warning:
-        "Dieser Zeitraum überschneidet sich mit einer normalen Buchung. Bitte aktiviere „Gemeinsamer Aufenthalt ist möglich“ oder kläre den Zeitraum vorher gemeinsam.",
+        "Gemeinsamer Aufenthalt muss bei beiden Buchungen erlaubt sein. Bitte stimmt euch vorher ab.",
       overlaps
     };
   }
@@ -162,11 +178,17 @@ export function checkSeptemberWarning(input: {
 export const priorityCancellationForfeitureWarning =
   "Diese bestätigte P-Zeit beginnt in weniger als einem Monat. Wenn du sie jetzt stornierst, werden die P-Tage nicht wieder deinem Jahreskontingent gutgeschrieben.";
 
+export function getPriorityCancellationWarning(startDate: string, now = new Date()) {
+  return startOfDay(now) > startOfDay(parseISO(startDate))
+    ? "Diese bestätigte P-Zeit hat bereits begonnen. Wenn du sie jetzt stornierst, werden die P-Tage nicht wieder deinem Jahreskontingent gutgeschrieben."
+    : priorityCancellationForfeitureWarning;
+}
+
 export function isLessThanOneMonthBeforeStart(startDate: string, now: Date = new Date()) {
   const start = startOfDay(parseISO(startDate));
   const today = startOfDay(now);
   const oneMonthBeforeStart = addMonths(start, -1);
-  return today > oneMonthBeforeStart && today <= start;
+  return today > oneMonthBeforeStart;
 }
 
 export function shouldForfeitPriorityDaysOnCancel(

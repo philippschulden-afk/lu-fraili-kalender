@@ -33,7 +33,7 @@ describe("daily booking confirmation", () => {
     mocks.save.mockResolvedValue({ result: null, error: { code: "P0001" } });
     const response = await GET(request());
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ confirmed: 0, failed: 1 });
+    expect(await response.json()).toEqual({ confirmed: 0, clarification: 0, failed: 1 });
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
@@ -42,8 +42,8 @@ describe("daily booking confirmation", () => {
     const saved = { changed: true, booking: { id: "booking", status: "bestaetigt" } };
     mocks.save.mockResolvedValueOnce({ result: saved, error: null })
       .mockResolvedValueOnce({ result: { ...saved, changed: false }, error: null });
-    expect(await (await GET(request())).json()).toEqual({ confirmed: 1, failed: 0 });
-    expect(await (await GET(request())).json()).toEqual({ confirmed: 0, failed: 0 });
+    expect(await (await GET(request())).json()).toEqual({ confirmed: 1, clarification: 0, failed: 0 });
+    expect(await (await GET(request())).json()).toEqual({ confirmed: 0, clarification: 0, failed: 0 });
     expect(mocks.save).toHaveBeenCalledWith(client, { bookingId: "booking", changes: {}, autoConfirm: true });
     expect(mocks.notify).toHaveBeenCalledTimes(1);
     expect(mocks.notify).toHaveBeenCalledWith(client, saved, null, { autoConfirmed: true });
@@ -58,7 +58,7 @@ describe("daily booking confirmation", () => {
 
   it("handles a nullable candidate list", async () => {
     candidateQuery(null);
-    expect(await (await GET(request())).json()).toEqual({ confirmed: 0, failed: 0 });
+    expect(await (await GET(request())).json()).toEqual({ confirmed: 0, clarification: 0, failed: 0 });
     expect(mocks.save).not.toHaveBeenCalled();
   });
 
@@ -66,5 +66,12 @@ describe("daily booking confirmation", () => {
     vi.stubEnv("CRON_SECRET", "");
     expect((await GET(request())).status).toBe(401);
     expect(mocks.admin).not.toHaveBeenCalled();
+  });
+
+  it("reports clarification without sending a false confirmation", async () => {
+    candidateQuery([{ id: "booking" }]);
+    mocks.save.mockResolvedValue({ result: { changed: true, booking: { id: "booking", status: "klaerung" } }, error: null });
+    expect(await (await GET(request())).json()).toEqual({ confirmed: 0, clarification: 1, failed: 0 });
+    expect(mocks.notify).not.toHaveBeenCalled();
   });
 });

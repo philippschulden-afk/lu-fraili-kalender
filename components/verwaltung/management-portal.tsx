@@ -212,7 +212,7 @@ export function ManagementPortal({
       const pRemoved = !payload.is_priority;
       const reduced = payload.is_priority && calculateBookingDays(payload.start_date, payload.end_date) < calculateBookingDays(originalBooking.start_date, originalBooking.end_date);
       const cancelled = payload.status === "storniert";
-      if ((dateChanged || pRemoved || reduced || cancelled) && !window.confirm("Diese bestätigte P-Zeit beginnt in weniger als einem Monat. Wenn sie jetzt geändert wird, können die ursprünglich reservierten P-Tage verfallen.")) {
+      if ((dateChanged || pRemoved || reduced || cancelled) && !window.confirm("Diese bestätigte P-Zeit beginnt in weniger als einem Monat oder hat bereits begonnen. Wenn sie jetzt geändert wird, können die aufgegebenen P-Tage verfallen.")) {
         return;
       }
     }
@@ -444,7 +444,8 @@ export function ManagementPortal({
             });
             const hasConfirmedOverlap = conflictLabels.some((conflict) => conflict.booking.status === "bestaetigt");
             const hasDisplacement = conflictLabels.some((conflict) => conflict.kind === "priority_displacement");
-            const canDecideBooking = booking.status === "angefragt" && bookingObjections.length > 0;
+            const canDecideBooking = booking.status === "klaerung" || (booking.status === "angefragt" && bookingObjections.length > 0);
+            const hasProtectedQuota = Boolean(booking.is_priority && booking.confirmed_at) || Boolean(booking.priority_protected_dates?.length) || forfeitures.some((row) => row.booking_id === booking.id);
             return (
               <div key={booking.id} className="rounded-lg border border-teal-100 p-4">
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -479,10 +480,10 @@ export function ManagementPortal({
                 <p className="mt-3 rounded-lg bg-amber-50 p-3 text-amber-950">Diese Änderung überschreibt die normale Regelprüfung.</p>
                 {canDecideBooking ? (
                   <div className="mt-3 rounded-lg bg-orange-50 p-3 text-orange-950">
-                    <p className="font-bold">Widersprüche</p>
+                    <p className="font-bold">{bookingObjections.length ? "Widersprüche" : "Überschneidung bitte klären"}</p>
                     {bookingObjections.map((objection) => <p key={objection.id} className="mt-1">{objection.reason}</p>)}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button className="rounded-lg bg-green-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "bestaetigt")}>Trotz Widerspruch bestätigen</button>
+                      <button className="rounded-lg bg-green-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "bestaetigt")}>Bestätigen</button>
                       <button className="rounded-lg bg-red-700 px-4 py-3 font-bold text-white" onClick={() => saveBooking(booking.id, "abgelehnt")}>Buchung ablehnen</button>
                     </div>
                   </div>
@@ -492,7 +493,7 @@ export function ManagementPortal({
                   {!["storniert", "abgelehnt"].includes(booking.status) ? (
                     <button className="rounded-lg border border-gray-400 bg-white px-4 py-3 font-bold" onClick={() => saveBooking(booking.id, "storniert")}>Stornieren</button>
                   ) : null}
-                  <button className="rounded-lg border border-red-300 bg-white px-4 py-3 font-bold text-red-800" onClick={() => deleteBooking(booking.id)}>Buchung löschen</button>
+                  {!hasProtectedQuota ? <button className="rounded-lg border border-red-300 bg-white px-4 py-3 font-bold text-red-800" onClick={() => deleteBooking(booking.id)}>Buchung löschen</button> : <p className="self-center text-sm text-gray-700">P-Tage bleiben erhalten. Diese Buchung kann nur storniert werden.</p>}
                 </div>
                 <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
                   <input className="focus-ring rounded-md border p-3" placeholder="Kommentar hinzufügen" value={comments[booking.id] ?? ""} onChange={(event) => setComments((current) => ({ ...current, [booking.id]: event.target.value }))} />

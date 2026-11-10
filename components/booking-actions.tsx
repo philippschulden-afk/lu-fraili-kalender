@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { WhatsAppShareButton } from "@/components/whatsapp-share-button";
 import type { Booking, Profile } from "@/lib/types";
 import {
-  calculateDateRangeDeltaDays,
-  priorityCancellationForfeitureWarning,
+  getBookingEditDeltaDays,
+  getPriorityCancellationWarning,
   shouldForfeitPriorityDaysOnCancel,
   shouldForfeitPriorityDaysOnChange
 } from "@/lib/rules";
@@ -29,10 +29,11 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
   const isOtherParty = booking.family_party_id !== profile.family_party_id;
   const isSchlichter = profile.role === "schlichter";
   const canEdit = (isOwnBooking || isSameParty || isSchlichter) && !["storniert", "abgelehnt"].includes(booking.status);
-  const canDecideObjection = isSchlichter && booking.status === "angefragt" && objectionCount > 0;
+  const canDecideObjection = isSchlichter && (booking.status === "klaerung" || (booking.status === "angefragt" && objectionCount > 0));
   const forfeitureWarningApplies = shouldForfeitPriorityDaysOnCancel(booking);
+  const cancellationWarning = getPriorityCancellationWarning(booking.priority_protection_start_date ?? booking.start_date);
   const editDateChanged = editStartDate !== booking.start_date || editEndDate !== booking.end_date;
-  const editDeltaDays = editDateChanged ? calculateDateRangeDeltaDays(booking.start_date, booking.end_date, editStartDate, editEndDate) : 0;
+  const editDeltaDays = editDateChanged ? getBookingEditDeltaDays(booking, editStartDate, editEndDate) : 0;
   const editCreatesNewRequest = editDeltaDays > 3;
   const editForfeitureWarningApplies = shouldForfeitPriorityDaysOnChange({
     original: booking,
@@ -87,7 +88,7 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
   async function saveEdit() {
     if (
       editForfeitureWarningApplies &&
-      !window.confirm("Diese bestätigte P-Zeit beginnt in weniger als einem Monat. Wenn sie jetzt geändert wird, können die ursprünglich reservierten P-Tage verfallen.")
+      !window.confirm("Diese bestätigte P-Zeit beginnt in weniger als einem Monat oder hat bereits begonnen. Wenn sie jetzt geändert wird, können die aufgegebenen P-Tage verfallen.")
     ) {
       return;
     }
@@ -173,7 +174,7 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
               ) : null}
               {editForfeitureWarningApplies ? (
                 <p className="rounded-lg bg-amber-50 p-3 text-amber-950">
-                  Diese bestätigte P-Zeit beginnt in weniger als einem Monat. Wenn sie jetzt geändert wird, können die ursprünglich reservierten P-Tage verfallen.
+                  Diese bestätigte P-Zeit beginnt in weniger als einem Monat oder hat bereits begonnen. Wenn sie jetzt geändert wird, können die aufgegebenen P-Tage verfallen.
                 </p>
               ) : null}
               <button disabled={busy} onClick={saveEdit} className="focus-ring w-full rounded-lg bg-teal-700 px-5 py-3 text-lg font-bold text-white disabled:bg-gray-400">
@@ -183,7 +184,7 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
           ) : null}
         </div>
       ) : null}
-      {booking.status === "angefragt" && isOtherParty ? (
+      {["angefragt", "klaerung"].includes(booking.status) && isOtherParty && booking.notice_period_ends_at && new Date(booking.notice_period_ends_at) > new Date() ? (
         <div className="space-y-3">
           <label className="block">
             <span className="font-bold">Grund für den Widerspruch</span>
@@ -200,13 +201,13 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
       ) : null}
       {(isOwnBooking || isSchlichter) && !["storniert", "abgelehnt"].includes(booking.status) ? (
         <div>
-          {forfeitureWarningApplies ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-amber-950">{priorityCancellationForfeitureWarning}</p> : null}
+          {forfeitureWarningApplies ? <p className="mb-3 rounded-lg bg-amber-50 p-3 text-amber-950">{cancellationWarning}</p> : null}
           <button
             disabled={busy}
             onClick={() => {
               if (
                 forfeitureWarningApplies &&
-                !window.confirm(`${priorityCancellationForfeitureWarning} Trotzdem stornieren?`)
+                !window.confirm(`${cancellationWarning} Trotzdem stornieren?`)
               ) {
                 return;
               }
