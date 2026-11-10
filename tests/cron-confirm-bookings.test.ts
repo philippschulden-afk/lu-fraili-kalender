@@ -68,10 +68,11 @@ describe("daily booking confirmation", () => {
     expect(mocks.admin).not.toHaveBeenCalled();
   });
 
-  it("reports clarification without sending a false confirmation", async () => {
-    candidateQuery([{ id: "booking" }]);
-    mocks.save.mockResolvedValue({ result: { changed: true, booking: { id: "booking", status: "klaerung" } }, error: null });
+  it("notifies about a clarification without counting it as a confirmation", async () => {
+    const client = candidateQuery([{ id: "booking" }]);
+    const saved = { changed: true, booking: { id: "booking", status: "klaerung" } };
+    mocks.save.mockResolvedValue({ result: saved, error: null });
     expect(await (await GET(request())).json()).toEqual({ confirmed: 0, clarification: 1, failed: 0 });
-    expect(mocks.notify).not.toHaveBeenCalled();
+    expect(mocks.notify).toHaveBeenCalledWith(client, saved, null, { autoConfirmed: true });
   });
 });

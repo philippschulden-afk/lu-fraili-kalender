@@ -55,7 +55,8 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (context.error) return NextResponse.json({ error: context.error }, { status: context.status });
   const admin = createSupabaseAdminClient();
   // Related objections, events and forfeitures are removed by database cascades.
-  const { error } = await admin.from("bookings").delete().eq("id", id);
+  const { data, error } = await admin.from("bookings").delete().eq("id", id).select("*, family_parties(*)").maybeSingle();
   if (error) return NextResponse.json({ error: error.code === "P0001" ? error.message : "Die Buchung konnte nicht gelöscht werden." }, { status: error.code === "P0001" ? 409 : 500 });
+  if (data) await notifyBookingSave(admin, { booking: data as Booking, changed: true, new_request: false, forfeited_days: 0 }, context.user!.id, { deleted: true });
   return NextResponse.json({ message: "Änderung gespeichert." });
 }

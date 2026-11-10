@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
-import { getNotificationRecipients, sendBookingNotification } from "@/lib/email";
-import { recordEmailResult } from "@/lib/booking-notifications";
+import { notifyBookingObjection } from "@/lib/booking-notifications";
 import { bookingSaveError } from "@/lib/booking-store";
 import type { Booking } from "@/lib/types";
 
@@ -49,14 +48,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const failure = bookingSaveError(error);
     return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
-  try {
-    const recipients = await getNotificationRecipients(admin, { excludeUserId: user.id });
-    const result = await sendBookingNotification({ to: recipients, type: "objection_created", booking,
-      partyName: booking.family_parties?.name ?? "Familienpartei", reason });
-    await recordEmailResult(admin, booking.id, user.id, result, "email_objection");
-  } catch {
-    console.error("Widerspruch gespeichert; E-Mail konnte nicht versendet werden.");
-  }
+  await notifyBookingObjection(admin, booking, user.id, reason);
 
   return NextResponse.json({ ok: true });
 }

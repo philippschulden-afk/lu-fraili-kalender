@@ -2,7 +2,7 @@
 
 Ein privater, einfacher Familienkalender für das Ferienhaus in Lu Fraili, Sardinien.
 
-Eine Buchung wird zuerst angefragt. Die anfragende Person teilt die Anfrage über den WhatsApp-Teilen-Button in der Familiengruppe. Die Drei-Tage-Frist beginnt bereits beim Speichern in der App, nicht erst beim Teilen. Ohne Widerspruch bestätigt die App die Buchung automatisch einmal täglich. Die App ist die verbindliche Übersicht; sie verschickt keine E-Mail-Benachrichtigungen und keine automatischen WhatsApp-Nachrichten.
+Eine Buchung wird zuerst angefragt. Die App kann Änderungen per E-Mail ankündigen; zusätzlich steht der WhatsApp-Teilen-Button bereit. Die Drei-Tage-Frist beginnt beim Speichern, unabhängig vom Teilen. Ohne Widerspruch oder Überschneidung bestätigt die App die Buchung bei der täglichen Prüfung. Die App bleibt die verbindliche Übersicht. WhatsApp-Nachrichten werden nicht automatisch verschickt.
 
 ## 1. Lokale Installation
 
@@ -157,7 +157,7 @@ Verfallene Tage werden künftig mit ihrem konkreten Datum gespeichert. Weitere �
 
 Auch Schlichter dürfen die Mengenbegrenzung der P-Tage nicht übersteuern. Überschneidungen mit bereits bestätigten P-Zeiten bleiben auch in der Verwaltung gesperrt.
 
-Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. E-Mail-Benachrichtigungen der App sind abgeschaltet. Die Resend-Abhängigkeit wurde entfernt. Es entstehen keine neuen E-Mail-Vermerke im Buchungsverlauf; alte Einträge bleiben erhalten.
+Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. Der optionale E-Mail-Versand wird separat eingerichtet (siehe Abschnitt 7).
 
 P-Buchungen werden nach Übernachtungen pro betroffenem Kalenderjahr anteilig berechnet, auch während der Widerspruchsfrist. Anreise am 26.12. und Abreise am 04.01. belegen 6 P-Tage im ersten und 3 P-Tage im zweiten Jahr. Eine Nacht zählt zu dem Jahr, in dem sie beginnt. Die Grenzen von 42 P-Tagen pro Jahr und 21 P-Tagen pro einzelner Buchung gelten für alle, auch für Schlichter. Anzeige und Datenbank prüfen dieselbe Jahresquote.
 
@@ -188,7 +188,16 @@ Hinweis: Die Seed-E-Mails sind Platzhalter wie `peter@example.com`. Echte Profil
 
 ## 7. Benachrichtigungen und WhatsApp
 
-Die App verschickt keine E-Mail-Benachrichtigungen, auch nicht bei Widersprüchen, Bestätigungen, Änderungen oder Stornierungen. `RESEND_API_KEY` und `EMAIL_FROM` werden nicht mehr benötigt. Vorhandene Werte können entfernt werden; sie aktivieren den Versand nicht wieder.
+Der E-Mail-Versand ist standardmäßig aus. Für die Produktivumgebung in Vercel:
+
+1. Eine separate Versanddomain in Resend verifizieren. Die DNS-Einträge der Hauptmail nicht verändern.
+2. `RESEND_API_KEY` als geheime Variable ausschließlich für Production hinterlegen. Der Schlüssel benötigt nur Versandzugriff für die verifizierte Subdomain.
+3. `EMAIL_FROM` auf `Lu Fraili <buchungen@lu-fraili.philippschulden.de>` setzen und `NEXT_PUBLIC_APP_URL` mit der produktiven App-Adresse prüfen.
+4. `BOOKING_EMAIL_ENABLED=true` setzen und neu bereitstellen. `false` deaktiviert den Buchungsversand beim nächsten Deployment. Einladung und Passwort-Reset von Supabase sind davon unabhängig.
+
+Benachrichtigungen unterscheiden Anfrage, erneute Anfrage nach Änderung, sonstige Änderung, manuelle und automatische Bestätigung, Ablehnung, Stornierung, Widerspruch, Klärung, P-Zeit über normaler Buchung, verfallene P-Tage und Löschung. Der Betreff nennt die handelnde Person (oder die App), Familienpartei und Zeitraum. Ein in der Verwaltung angelegtes Profil ohne Partei meldet die App den Schlichtern. Beim Widerspruch erhalten die betroffene Partei und die Schlichter eine Mail. Bei anderen Buchungsereignissen erhalten freigegebene Familienmitglieder eine Nachricht, normalerweise ohne die handelnde Person. Adressen werden getrennt angeschrieben und dedupliziert.
+
+Die App speichert die Buchung vor dem Versand. Fehler oder ein fehlender Schlüssel verhindern keine Buchung. Im Verlauf steht, ob Resend die Nachricht angenommen hat oder der Versand nicht bestätigt werden konnte. Das ist keine Garantie für den Posteingang. Es gibt keine automatischen Wiederholungen fehlgeschlagener Sendungen und keinen rückwirkenden Versand. Bei Bedarf bitte weiterhin direkt informieren.
 
 Nach dem Speichern einer Anfrage zeigt die App einen deutlichen Hinweis und einen WhatsApp-Teilen-Button. WhatsApp öffnet sich mit einem vorbereiteten Text. Die Person muss die Familiengruppe auswählen und die Nachricht selbst senden. Es werden weder Telefonnummern noch WhatsApp-Daten gespeichert.
 

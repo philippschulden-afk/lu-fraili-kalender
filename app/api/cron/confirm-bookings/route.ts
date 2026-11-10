@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     if (!result.changed) continue;
     if (result.booking.status === "klaerung") {
       clarification += 1;
+      await notifyBookingSave(admin, result, null, { autoConfirmed: true });
       continue;
     }
     if (result.booking.status !== "bestaetigt") continue;

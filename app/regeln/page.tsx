@@ -105,7 +105,7 @@ export default function RulesPage() {
 
           <RuleSection title="12. Kommunikation">
             <p>Die App ersetzt perspektivisch den bisherigen Kalender.</p>
-            <p>Bitte teile neue Anfragen und wichtige Änderungen per WhatsApp in der Familiengruppe. Die App verschickt keine E-Mail-Benachrichtigungen.</p>
+            <p>Die App kann neue Anfragen und wichtige Änderungen per E-Mail ankündigen. Du kannst sie zusätzlich per WhatsApp in der Familiengruppe teilen. Die Frist beginnt weiterhin beim Speichern.</p>
             <p>Die App bleibt aber die maßgebliche Übersicht.</p>
           </RuleSection>
         </div>
