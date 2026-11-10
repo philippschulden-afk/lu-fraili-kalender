@@ -141,6 +141,8 @@ supabase/migrations/001_initial_schema.sql
 supabase/migrations/003_priority_day_forfeitures.sql
 supabase/migrations/004_booking_reliability.sql
 supabase/migrations/20261108143829_security_and_yearly_priority.sql
+supabase/migrations/20261110133015_booking_rule_consistency.sql
+supabase/migrations/20261110182329_overnight_counting_and_priority_clarification.sql
 ```
 
 Bei einem bestehenden Projekt nur die noch nicht ausgeführten Migrationen starten. Insbesondere `001` nicht erneut ausführen.
@@ -153,11 +155,15 @@ Die neue Version speichert Buchung, erneute Anfrage, Verfall und Verlauf gemeins
 
 Verfallene Tage werden künftig mit ihrem konkreten Datum gespeichert. Weitere Änderungen derselben Buchung können zusätzliche Tage verfallen lassen; dasselbe Datum wird dabei nicht mehrfach als Verfall eingetragen. Vorhandene ältere Sammelbeträge bleiben erhalten; ihre einzelnen Tage lassen sich nachträglich nicht zuverlässig rekonstruieren.
 
-Schlichter dürfen über die Verwaltung weiterhin die Mengenbegrenzung der P-Tage übersteuern. Überschneidungen mit bereits bestätigten P-Zeiten bleiben auch dort gesperrt.
+Auch Schlichter dürfen die Mengenbegrenzung der P-Tage nicht übersteuern. Überschneidungen mit bereits bestätigten P-Zeiten bleiben auch in der Verwaltung gesperrt.
 
 Die neuen Datenbankfunktionen sind ausschließlich für den serverseitigen Service-Role-Zugang freigegeben. Deshalb muss `SUPABASE_SERVICE_ROLE_KEY` in Vercel gesetzt sein. Für automatische Bestätigungen muss zusätzlich `CRON_SECRET` gesetzt sein. E-Mail-Benachrichtigungen der App sind abgeschaltet. Die Resend-Abhängigkeit wurde entfernt. Es entstehen keine neuen E-Mail-Vermerke im Buchungsverlauf; alte Einträge bleiben erhalten.
 
-P-Buchungen werden pro betroffenem Kalenderjahr anteilig berechnet, auch während der Widerspruchsfrist. Beispiel: 26.12. bis 04.01. belegt 6 Tage im ersten und 4 Tage im zweiten Jahr. Die Grenze von 21 Tagen gilt weiterhin für die gesamte einzelne P-Buchung. Anzeige und Datenbank prüfen die jeweilige Jahresquote.
+P-Buchungen werden nach Übernachtungen pro betroffenem Kalenderjahr anteilig berechnet, auch während der Widerspruchsfrist. Anreise am 26.12. und Abreise am 04.01. belegen 6 P-Tage im ersten und 3 P-Tage im zweiten Jahr. Eine Nacht zählt zu dem Jahr, in dem sie beginnt. Die Grenzen von 42 P-Tagen pro Jahr und 21 P-Tagen pro einzelner Buchung gelten für alle, auch für Schlichter. Anzeige und Datenbank prüfen dieselbe Jahresquote.
+
+Am Abreisetag darf die nächste Partei anreisen, auch ohne gemeinsamen Aufenthalt. Neue Buchungen benötigen mindestens eine Übernachtung. Gespeicherte Reisedaten werden bei der Umstellung nicht verschoben.
+
+Eine P-Anfrage über einer bestätigten normalen Buchung setzt beide Buchungen auf „Klärung erforderlich“. Es wird nichts automatisch storniert oder verkürzt. Schlichter entscheiden nach Abstimmung; eine bestätigte P-Zeit darf dabei nicht überbucht werden. Details und Migration: `docs/UEBERNACHTUNGEN_UND_KLAERUNG_2026-11-10.md`.
 
 ## 6. Seed-Daten
 

@@ -95,12 +95,14 @@ const conflictBookings = [
 ] satisfies Booking[];
 
 describe("booking rules", () => {
-  it("counts booking days including start and end date", () => {
-    expect(calculateBookingDays("2026-08-03", "2026-08-17")).toBe(15);
+  it("counts overnight stays, excluding checkout", () => {
+    expect(calculateBookingDays("2026-08-03", "2026-08-17")).toBe(14);
+    expect(calculateBookingDays("2026-06-13", "2026-06-20")).toBe(7);
+    expect(calculateBookingDays("2026-06-13", "2026-06-13")).toBe(0);
   });
 
   it("calculates used priority days for one party and year", () => {
-    expect(getPriorityDaysUsed(bookings, "peter", 2026)).toBe(14);
+    expect(getPriorityDaysUsed(bookings, "peter", 2026)).toBe(13);
   });
 
   it("counts requested priority days against the annual quota", () => {
@@ -121,7 +123,7 @@ describe("booking rules", () => {
         "peter",
         2026
       )
-    ).toBe(21);
+    ).toBe(19);
   });
 
   it("calculates the changed days between two date ranges", () => {
@@ -327,7 +329,7 @@ describe("booking rules", () => {
         new Date("2026-07-15T00:00:00Z")
       )
     ).toBe(true);
-    expect(calculateForfeitedPriorityDays(bookings[0])).toBe(14);
+    expect(calculateForfeitedPriorityDays(bookings[0])).toBe(13);
   });
 
   it("forfeits confirmed P-days for 2026-06-13 when today is 2026-06-07", () => {
@@ -352,7 +354,7 @@ describe("booking rules", () => {
         "peter",
         2026
       )
-    ).toBe(21);
+    ).toBe(20);
   });
 
   it("detects duplicate forfeitures for the same booking and reason", () => {
@@ -400,7 +402,7 @@ describe("booking rules", () => {
   });
 
   it("forfeits all original P-days when moved to a non-overlapping range", () => {
-    expect(calculateForfeitedDaysOnEdit("2026-06-13", "2026-06-20", "2026-07-01", "2026-07-08")).toBe(8);
+    expect(calculateForfeitedDaysOnEdit("2026-06-13", "2026-06-20", "2026-07-01", "2026-07-08")).toBe(7);
   });
 
   it("forfeits all original P-days when P-Zeit is removed less than one month before start", () => {

@@ -28,4 +28,11 @@ describe("manual WhatsApp sharing", () => {
     expect(buildWhatsAppMessage({ ...booking, priorityDisplacementPartyName: "Teresa" }))
       .toContain("normalen Buchung von Teresa. Bitte stimmt euch dazu ab.");
   });
+
+  it("never promises automatic confirmation for a clarification case", () => {
+    const message = buildWhatsAppMessage({ ...booking, status: "klaerung", priorityDisplacementPartyName: "Teresa" });
+    expect(message).toContain("Klärung erforderlich");
+    expect(message).toContain("keine automatische Bestätigung");
+    expect(message).not.toContain("in 3 Tagen automatisch bestätigt");
+  });
 });

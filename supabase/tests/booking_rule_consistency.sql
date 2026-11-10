@@ -37,7 +37,7 @@ begin
   booking_id := (saved->'booking'->>'id')::uuid;
   perform public.save_booking(booking_id, moderator, '{"status":"bestaetigt"}', true);
   result := public.save_booking(booking_id, actor, '{"status":"storniert"}');
-  perform pg_temp.expect((result->>'forfeited_days')::integer = 8, 'Cancellation after stay retains all 8 priority days');
+  perform pg_temp.expect((result->>'forfeited_days')::integer = 7, 'Cancellation after stay retains all 7 priority nights');
   perform pg_temp.expect(result->'booking'->>'status' = 'storniert', 'Cancellation saves status');
   begin
     delete from public.bookings where id = booking_id;
@@ -45,7 +45,7 @@ begin
   exception when raise_exception then
     if sqlerrm not like 'Diese Buchung kann nicht gelöscht werden, da P-Tage%' then raise; end if;
   end;
-  perform pg_temp.expect((select count(*) from public.priority_day_forfeitures f where f.booking_id = (saved->'booking'->>'id')::uuid) = 8, 'Deletion preserves exactly 8 forfeiture rows');
+  perform pg_temp.expect((select count(*) from public.priority_day_forfeitures f where f.booking_id = (saved->'booking'->>'id')::uuid) = 7, 'Deletion preserves exactly 7 forfeiture rows');
 
   actor := pg_temp.actor('Stornierung rechtzeitig');
   saved := public.save_booking(null, actor, jsonb_build_object('start_date', base, 'end_date', base + 7, 'is_priority', true));

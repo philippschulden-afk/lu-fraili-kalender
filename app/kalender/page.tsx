@@ -145,7 +145,7 @@ export default async function CalendarPage({
                 </div>
                 <div className="mt-2 space-y-1">
                   {dayBookings.slice(0, 2).map((booking) => (
-                    <CalendarBookingPill key={booking.id} booking={booking} />
+                    <CalendarBookingPill key={booking.id} booking={booking} day={dayIso} />
                   ))}
                   {dayBookings.length > 2 ? <p className="rounded bg-paper px-1 py-0.5 text-xs font-bold">+ weitere</p> : null}
                 </div>
@@ -210,7 +210,7 @@ export default async function CalendarPage({
   );
 }
 
-function CalendarBookingPill({ booking }: { booking: Booking }) {
+function CalendarBookingPill({ booking, day }: { booking: Booking; day: string }) {
   const partyName = booking.family_parties?.name ?? "Familienpartei";
   return (
     <div className={`rounded border px-1.5 py-1 text-xs font-bold leading-tight ${compactStatusClasses[booking.status]}`}>
@@ -218,6 +218,7 @@ function CalendarBookingPill({ booking }: { booking: Booking }) {
         {booking.is_priority ? <span className="rounded bg-teal-800 px-1 text-white">P</span> : null}
         <span className="truncate">{partyName}</span>
       </span>
+      {day === booking.end_date ? <span className="block">Abreise</span> : day === booking.start_date ? <span className="block">Anreise</span> : null}
       <span className="hidden sm:block">{statusLabels[booking.status]}</span>
     </div>
   );

@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { parseISO, subDays } from "date-fns";
 import { formatGermanRange } from "@/lib/date-format";
 import { findBookingConflicts, hasBlockingConflict } from "@/lib/conflicts";
 import { WhatsAppShareButton } from "@/components/whatsapp-share-button";
-import type { Booking, FamilyParty, Profile, PriorityDayForfeiture } from "@/lib/types";
+import type { Booking, BookingStatus, FamilyParty, Profile, PriorityDayForfeiture } from "@/lib/types";
 import { calculateBookingDays, checkSeptemberWarning, getTotalPriorityDaysUsedIncludingForfeitures } from "@/lib/rules";
 
 export function NewBookingForm({
@@ -29,10 +30,11 @@ export function NewBookingForm({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+  const [createdStatus, setCreatedStatus] = useState<BookingStatus>("angefragt");
   const selectedParty = familyParties.find((party) => party.id === profile.family_party_id);
   const days = startDate && endDate ? calculateBookingDays(startDate, endDate) : 0;
   const selectedYears = startDate && endDate && days > 0
-    ? Array.from({ length: Number(endDate.slice(0, 4)) - Number(startDate.slice(0, 4)) + 1 }, (_, i) => Number(startDate.slice(0, 4)) + i)
+    ? Array.from({ length: subDays(parseISO(endDate), 1).getFullYear() - Number(startDate.slice(0, 4)) + 1 }, (_, i) => Number(startDate.slice(0, 4)) + i)
     : [new Date().getFullYear()];
   const conflictPreview = startDate && endDate && profile.family_party_id
     ? findBookingConflicts({
@@ -88,6 +90,7 @@ export function NewBookingForm({
     }
 
     setCreatedBookingId(String(result.id));
+    setCreatedStatus(result.status === "klaerung" ? "klaerung" : "angefragt");
     setMessage("");
   }
 
@@ -106,14 +109,15 @@ export function NewBookingForm({
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="text-lg font-bold">Startdatum</span>
+            <span className="text-lg font-bold">Anreise</span>
             <input className="focus-ring mt-2 w-full rounded-md border p-3 text-lg" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
           </label>
           <label className="block">
-            <span className="text-lg font-bold">Enddatum</span>
+            <span className="text-lg font-bold">Abreise</span>
             <input className="focus-ring mt-2 w-full rounded-md border p-3 text-lg" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
           </label>
         </div>
+        <p className="text-gray-700">Gezählt werden Übernachtungen. Samstag bis Samstag sind 7 P-Tage. Am Abreisetag darf die nächste Partei anreisen.</p>
         <label className="flex gap-3 rounded-lg border border-teal-100 p-4">
           <input className="mt-1 h-6 w-6" type="checkbox" checked={isPriority} onChange={(e) => setIsPriority(e.target.checked)} />
           <span>
@@ -159,7 +163,7 @@ export function NewBookingForm({
                   if (conflict.kind === "priority_displacement") {
                     return (
                       <p key={conflict.booking.id} className="rounded-lg bg-amber-50 p-3 text-amber-950">
-                        Diese P-Zeit überschneidet sich mit einer normalen Buchung von {partyName} vom {range}. Nach den Regeln kann eine normale Buchung durch eine gültige P-Zeit verdrängt werden. Die betroffene Partei sollte informiert werden.
+                        Diese P-Zeit überschneidet sich mit einer normalen Buchung von {partyName} vom {range}. Beide Buchungen müssen gemeinsam mit den Schlichtern geklärt werden. Es wird nichts automatisch storniert oder verkürzt.
                       </p>
                     );
                   }
@@ -191,14 +195,14 @@ export function NewBookingForm({
         {isPriority ? selectedYears.map((year) => (
           <p key={year} className="mt-2 text-lg">Verbleibende P-Tage {year}: {Math.max(42 - getTotalPriorityDaysUsedIncludingForfeitures(existingBookings, forfeitures, profile.family_party_id ?? "", year), 0)}</p>
         )) : null}
-        {days > 0 ? <p className="mt-2 text-lg">Dauer: {days} Tage</p> : null}
+        {days > 0 ? <p className="mt-2 text-lg">Dauer: {days} Übernachtungen</p> : null}
         <p className="mt-5 text-gray-700">
-          Bitte teile deine Anfrage nach dem Speichern in der Familiengruppe. Die Widerspruchsfrist beginnt mit dem Speichern. Wenn innerhalb von drei Tagen niemand widerspricht, wird sie automatisch bestätigt.
+          Bitte teile deine Anfrage nach dem Speichern in der Familiengruppe. {priorityDisplacementConflicts.length ? "Wegen der betroffenen normalen Buchung ist eine gemeinsame Klärung nötig. Es erfolgt keine automatische Bestätigung." : "Die Widerspruchsfrist beginnt mit dem Speichern. Wenn innerhalb von drei Tagen niemand widerspricht, wird sie automatisch bestätigt."}
         </p>
         {createdBookingId ? (
           <div className="mt-6 rounded-lg bg-green-50 p-4 text-green-900">
             <p className="text-lg font-bold">Buchungsanfrage wurde erstellt.</p>
-            <p className="mt-3 text-lg font-bold">Bitte teile diese Anfrage in der Familiengruppe. Die Widerspruchsfrist läuft bereits.</p>
+            <p className="mt-3 text-lg font-bold">{createdStatus === "klaerung" ? "Klärung erforderlich. Bitte stimmt euch mit der betroffenen Partei und den Schlichtern ab. Es erfolgt keine automatische Bestätigung." : "Bitte teile diese Anfrage in der Familiengruppe. Die Widerspruchsfrist läuft bereits."}</p>
             {affectedPartyText ? (
               <p className="mt-2">
                 Bitte informiere {affectedPartyText}, dass ihre normale Buchung durch deine P-Zeit betroffen ist.
@@ -215,7 +219,7 @@ export function NewBookingForm({
                   startDate,
                   endDate,
                   isPriority,
-                  status: "angefragt",
+                  status: createdStatus,
                   priorityDisplacementPartyName: affectedPartyText || undefined
                 }}
               />
@@ -227,7 +231,7 @@ export function NewBookingForm({
         ) : null}
         <button
           onClick={submit}
-          disabled={busy || !startDate || !endDate || blocksSubmission || Boolean(createdBookingId)}
+          disabled={busy || !startDate || !endDate || days <= 0 || blocksSubmission || Boolean(createdBookingId)}
           className="focus-ring mt-6 w-full rounded-lg bg-teal-700 px-6 py-4 text-xl font-bold text-white hover:bg-teal-800 disabled:bg-gray-400"
         >
           {blocksSubmission ? "Buchung blockiert" : "Buchungsanfrage senden"}

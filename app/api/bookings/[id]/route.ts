@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   await notifyBookingSave(admin, result, user.id, { previous });
   return NextResponse.json({
-    message: result.new_request ? "Änderung wurde als neue Anfrage gesendet." : "Änderung gespeichert.",
+    message: result.booking.status === "klaerung" ? "Änderung gespeichert. Klärung erforderlich – bitte mit den betroffenen Parteien und Schlichtern abstimmen." : result.new_request ? "Änderung wurde als neue Anfrage gesendet." : "Änderung gespeichert.",
     requiresNewRequest: result.new_request
   });
 }

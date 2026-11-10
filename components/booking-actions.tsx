@@ -151,11 +151,11 @@ export function BookingActions({ booking, profile, objectionCount }: { booking: 
             <div className="mt-4 space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="font-bold">Startdatum</span>
+                  <span className="font-bold">Anreise</span>
                   <input className="focus-ring mt-2 w-full rounded-md border p-3" type="date" value={editStartDate} onChange={(event) => setEditStartDate(event.target.value)} />
                 </label>
                 <label className="block">
-                  <span className="font-bold">Enddatum</span>
+                  <span className="font-bold">Abreise</span>
                   <input className="focus-ring mt-2 w-full rounded-md border p-3" type="date" value={editEndDate} onChange={(event) => setEditEndDate(event.target.value)} />
                 </label>
               </div>

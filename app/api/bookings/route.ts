@@ -29,5 +29,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
   await notifyBookingSave(admin, result, user.id);
-  return NextResponse.json({ id: result.booking.id });
+  return NextResponse.json({ id: result.booking.id, status: result.booking.status });
 }

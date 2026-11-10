@@ -32,13 +32,15 @@ export default function RulesPage() {
             <p>Jede Familienpartei hat pro Kalenderjahr <strong>42 P-Tage</strong>.</p>
             <p><strong>P-Zeit</strong> bedeutet: Diese Buchung hat Vorrang vor normalen Buchungen.</p>
             <p>Eine einzelne P-Buchung darf maximal <strong>21 Tage</strong> dauern.</p>
+            <p>Ein P-Tag entspricht einer <strong>Übernachtung</strong>. Anreise am Samstag und Abreise am nächsten Samstag zählen als 7 P-Tage, nicht als 8.</p>
+            <p>Die Grenzen von 42 P-Tagen pro Kalenderjahr und 21 P-Tagen pro Buchung gelten für alle, auch für Schlichter.</p>
             <p>Angefragte P-Tage werden bereits reserviert und zählen bis zur Stornierung oder Ablehnung auf das Kontingent.</p>
           </RuleSection>
 
           <RuleSection title="4. Normale Buchungen">
             <p>Normale Buchungen sind Buchungen ohne P-Zeit.</p>
             <p>Sie sind erlaubt und zählen nicht auf das P-Kontingent.</p>
-            <p>Eine normale Buchung kann aber durch eine gültige <strong>P-Zeit</strong> einer anderen Familienpartei verdrängt werden.</p>
+            <p>Eine normale Buchung kann durch eine gültige <strong>P-Zeit</strong> einer anderen Familienpartei betroffen sein. Beide Buchungen werden dann auf <strong>Klärung erforderlich</strong> gesetzt. Die Parteien stimmen den Zeitraum mit den Schlichtern ab. Es wird nichts automatisch storniert oder verkürzt.</p>
           </RuleSection>
 
           <RuleSection title="5. Überschneidungen">
@@ -47,10 +49,11 @@ export default function RulesPage() {
             <ul className="mt-3 list-disc space-y-2 pl-6">
               <li>P-Zeit über P-Zeit: nicht möglich</li>
               <li>Normale Buchung über P-Zeit: nicht möglich</li>
-              <li>P-Zeit über normale Buchung: möglich, aber die betroffene Partei muss informiert werden</li>
+              <li>P-Zeit über normale Buchung: Anfrage möglich, danach gemeinsame Klärung mit den Schlichtern</li>
               <li>Normale Buchung über normale Buchung: möglich, wenn gemeinsamer Aufenthalt bei beiden Buchungen erlaubt ist</li>
             </ul>
             <p>Wird eine bestätigte P-Zeit erneut angefragt, bleiben ihre bereits bestätigten, weiterhin enthaltenen Tage geschützt.</p>
+            <p><strong>Wechsel am selben Tag:</strong> Am Abreisetag einer Partei darf eine andere Partei anreisen, auch ohne Freigabe für gemeinsamen Aufenthalt. Bitte stimmt die Übergabe direkt miteinander ab.</p>
           </RuleSection>
 
           <RuleSection title="6. Drei-Tage-Frist">

@@ -12,19 +12,19 @@ export function calculateBookingDays(startDate: string, endDate: string) {
   const end = parseISO(endDate);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) return 0;
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return 0;
-  const days = differenceInCalendarDays(end, start) + 1;
+  const days = differenceInCalendarDays(end, start);
   return Math.max(days, 0);
 }
 
 export function getPriorityDaysUsed(bookings: RuleBooking[], familyPartyId: string, year: number) {
   const yearStart = `${year}-01-01`;
-  const yearEnd = `${year}-12-31`;
+  const yearEnd = `${year + 1}-01-01`;
   return bookings
     .filter((booking) => {
       return (
         booking.family_party_id === familyPartyId &&
         booking.is_priority &&
-        booking.start_date <= yearEnd && booking.end_date >= yearStart &&
+        booking.start_date < yearEnd && booking.end_date > yearStart &&
         ["angefragt", "bestaetigt", "klaerung"].includes(booking.status)
       );
     })
@@ -44,7 +44,7 @@ export function calculateDateRangeDeltaDays(oldStart: string, oldEnd: string, ne
   const newStartDate = parseISO(newStart);
   const newEndDate = parseISO(newEnd);
 
-  if (newEndDate < oldStartDate || newStartDate > oldEndDate) return oldDays + newDays;
+  if (newEndDate <= oldStartDate || newStartDate >= oldEndDate) return oldDays + newDays;
 
   const overlapStart = newStartDate > oldStartDate ? newStartDate : oldStartDate;
   const overlapEnd = newEndDate < oldEndDate ? newEndDate : oldEndDate;
@@ -109,7 +109,7 @@ export function validateMaxSinglePriorityBooking(requestedDays: number, maxDays 
 }
 
 export function bookingsOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string) {
-  return parseISO(aStart) <= parseISO(bEnd) && parseISO(bStart) <= parseISO(aEnd);
+  return aStart < aEnd && bStart < bEnd && aStart < bEnd && bStart < aEnd;
 }
 
 export function checkOverlaps(input: {
@@ -165,8 +165,8 @@ export function checkSeptemberWarning(input: {
   const end = parseISO(input.endDate);
   const touchesSeptember = [start.getFullYear(), end.getFullYear()].some((year) => {
     const first = new Date(year, 8, 1);
-    const last = new Date(year, 8, 30);
-    return start <= last && first <= end;
+    const afterSeptember = new Date(year, 9, 1);
+    return start < afterSeptember && first < end;
   });
 
   const party = input.familyPartyName?.toLowerCase();
@@ -211,7 +211,7 @@ export function shouldForfeitPriorityDaysOnChange(input: {
 
   if (!input.updated.is_priority) return true;
   if (input.original.priority_protected_dates?.length) {
-    return input.original.priority_protected_dates.some((date) => date < input.updated.start_date || date > input.updated.end_date);
+    return input.original.priority_protected_dates.some((date) => date < input.updated.start_date || date >= input.updated.end_date);
   }
 
   return calculateForfeitedDaysOnEdit(
@@ -234,7 +234,7 @@ export function calculateForfeitedDaysOnEdit(oldStart: string, oldEnd: string, n
   const newEndDate = parseISO(newEnd);
   const oldDays = calculateBookingDays(oldStart, oldEnd);
 
-  if (newEndDate < oldStartDate || newStartDate > oldEndDate) return oldDays;
+  if (newEndDate <= oldStartDate || newStartDate >= oldEndDate) return oldDays;
 
   const overlapStart = newStartDate > oldStartDate ? newStartDate : oldStartDate;
   const overlapEnd = newEndDate < oldEndDate ? newEndDate : oldEndDate;

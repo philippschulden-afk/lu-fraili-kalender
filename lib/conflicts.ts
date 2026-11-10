@@ -10,7 +10,8 @@ export function isOverlappingBooking(
   requested: Pick<Booking, "start_date" | "end_date">,
   existing: Pick<Booking, "start_date" | "end_date">
 ) {
-  return existing.start_date <= requested.end_date && existing.end_date >= requested.start_date;
+  return requested.start_date < requested.end_date && existing.start_date < existing.end_date &&
+    existing.start_date < requested.end_date && existing.end_date > requested.start_date;
 }
 
 export function hasBlockingPriorityConflict(input: {
@@ -24,7 +25,7 @@ export function hasBlockingPriorityConflict(input: {
       ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) &&
       booking.is_priority &&
       ((booking.status === "bestaetigt" && isOverlappingBooking(input.requested, booking)) ||
-        (booking.priority_protected_dates ?? []).some((day) => day >= input.requested.start_date && day <= input.requested.end_date))
+        (booking.priority_protected_dates ?? []).some((day) => day >= input.requested.start_date && day < input.requested.end_date))
   );
 }
 
@@ -48,7 +49,7 @@ export function findBookingConflicts(input: {
     if (
       input.requested.is_priority &&
       booking.family_party_id !== input.requested.family_party_id &&
-      booking.status === "bestaetigt" &&
+      (booking.status === "bestaetigt" || (booking.status === "klaerung" && Boolean(booking.confirmed_at))) &&
       !booking.is_priority
     ) {
       return { booking, kind: "priority_displacement", blocks: false };

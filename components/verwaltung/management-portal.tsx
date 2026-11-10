@@ -455,8 +455,8 @@ export function ManagementPortal({
                   {hasDisplacement ? <Label text="P-Zeit verdrängt normale Buchung" tone="red" /> : null}
                 </div>
                 <div className="grid gap-3 xl:grid-cols-[150px_150px_220px_120px_150px_1fr] xl:items-end">
-                  <TextInput label="Startdatum" value={booking.start_date} type="date" onChange={(value) => updateBooking(booking.id, { start_date: value })} />
-                  <TextInput label="Enddatum" value={booking.end_date} type="date" onChange={(value) => updateBooking(booking.id, { end_date: value })} />
+                  <TextInput label="Anreise" value={booking.start_date} type="date" onChange={(value) => updateBooking(booking.id, { start_date: value })} />
+                  <TextInput label="Abreise" value={booking.end_date} type="date" onChange={(value) => updateBooking(booking.id, { end_date: value })} />
                   <Select label="Familienpartei" value={booking.family_party_id} onChange={(value) => updateBooking(booking.id, { family_party_id: value })}>
                     {familyParties.map((party) => <option key={party.id} value={party.id}>{party.name}</option>)}
                   </Select>
@@ -477,7 +477,7 @@ export function ManagementPortal({
                   <Info label="Erstellt von" value={profileNameByUserId.get(booking.created_by) ?? "Unbekannt"} />
                   <Info label="Erstellt am" value={formatGermanDate(booking.created_at)} />
                 </div>
-                <p className="mt-3 rounded-lg bg-amber-50 p-3 text-amber-950">Diese Änderung überschreibt die normale Regelprüfung.</p>
+                <p className="mt-3 text-gray-700">Auch für Schlichter gelten höchstens 42 P-Tage pro Jahr und 21 P-Tage pro Buchung. Ein P-Tag entspricht einer Übernachtung.</p>
                 {canDecideBooking ? (
                   <div className="mt-3 rounded-lg bg-orange-50 p-3 text-orange-950">
                     <p className="font-bold">{bookingObjections.length ? "Widersprüche" : "Überschneidung bitte klären"}</p>
@@ -519,7 +519,7 @@ export function ManagementPortal({
             const activeUsed = pDaysUsedForParty(party.id);
             const forfeitedUsed = forfeitedDaysForParty(party.id);
             const used = activeUsed + forfeitedUsed;
-            const activePriorityBookings = savedBookings.filter((booking) => booking.family_party_id === party.id && booking.is_priority && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) && booking.start_date <= `${priorityYear}-12-31` && booking.end_date >= `${priorityYear}-01-01`);
+            const activePriorityBookings = savedBookings.filter((booking) => booking.family_party_id === party.id && booking.is_priority && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status) && booking.start_date <= `${priorityYear}-12-31` && booking.end_date > `${priorityYear}-01-01`);
             return (
               <div key={party.id} className="rounded-lg border border-teal-100 p-4">
                 <h3 className="text-xl font-bold">{party.name}</h3>
@@ -529,7 +529,7 @@ export function ManagementPortal({
                 <p className="text-lg">Verbleibend: <strong>{Math.max(42 - used, 0)}</strong></p>
                 <div className="mt-3 space-y-1">
                   {activePriorityBookings.length ? activePriorityBookings.map((booking) => (
-                    <p key={booking.id} className="rounded bg-paper p-2">{formatGermanDate(booking.start_date)} bis {formatGermanDate(booking.end_date)}: {calculateBookingDays(booking.start_date, booking.end_date)} Tage</p>
+                    <p key={booking.id} className="rounded bg-paper p-2">{formatGermanDate(booking.start_date)} bis {formatGermanDate(booking.end_date)}: {getPriorityDaysUsed([booking], party.id, priorityYear)} P-Tage im Jahr {priorityYear}</p>
                   )) : <p className="text-gray-700">Keine aktiven P-Buchungen in diesem Jahr.</p>}
                 </div>
               </div>

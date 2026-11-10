@@ -49,7 +49,7 @@ begin
   if (result->>'forfeited_days')::integer <> 2 then raise exception 'Second edit must forfeit additional days'; end if;
   result := public.save_booking(test_booking_id, actor, '{"status":"storniert"}');
   select sum(f.forfeited_days) into used from public.priority_day_forfeitures f where f.booking_id = test_booking_id;
-  if used <> 8 then raise exception 'Cancellation must preserve exactly 8 forfeited days'; end if;
+  if used <> 7 then raise exception 'Cancellation must preserve exactly 7 forfeited nights'; end if;
 
   -- The days forfeited by this edit must already be included in quota validation.
   saved := public.save_booking(null, other_actor, jsonb_build_object('start_date', start_day, 'end_date', start_day + 7, 'is_priority', true));
@@ -59,8 +59,8 @@ begin
   if reserve_day <= start_day + 7 and reserve_day + 16 >= start_day then
     reserve_day := make_date(extract(year from start_day)::integer, 7, 1);
   end if;
-  perform public.save_booking(null, other_actor, jsonb_build_object('start_date', reserve_day, 'end_date', reserve_day + 16, 'is_priority', true));
-  perform public.save_booking(null, other_actor, jsonb_build_object('start_date', reserve_day, 'end_date', reserve_day + 16, 'is_priority', true));
+  perform public.save_booking(null, other_actor, jsonb_build_object('start_date', reserve_day, 'end_date', reserve_day + 17, 'is_priority', true));
+  perform public.save_booking(null, other_actor, jsonb_build_object('start_date', reserve_day, 'end_date', reserve_day + 18, 'is_priority', true));
   begin
     perform public.save_booking(protected_id, other_actor, jsonb_build_object('start_date', start_day + 1, 'end_date', start_day + 8));
     raise exception 'Expected quota rejection including newly forfeited day';
@@ -85,14 +85,14 @@ begin
     raise exception 'Extension must restart notice without forfeiture';
   end if;
   result := public.save_booking(protected_id, other_actor, '{"status":"storniert"}');
-  if (result->>'forfeited_days')::integer <> 8 then raise exception 'Re-requested edit lost protection of original confirmed days'; end if;
+  if (result->>'forfeited_days')::integer <> 7 then raise exception 'Re-requested edit lost protection of original confirmed nights'; end if;
 
   -- Pending bookings reserve the quota. Rejected writes leave no partial state.
-  saved := public.save_booking(null, actor, jsonb_build_object('start_date', quota_start, 'end_date', quota_start + 20, 'is_priority', true));
+  saved := public.save_booking(null, actor, jsonb_build_object('start_date', quota_start, 'end_date', quota_start + 21, 'is_priority', true));
   quota_id := (saved->'booking'->>'id')::uuid;
-  perform public.save_booking(null, actor, jsonb_build_object('start_date', quota_start + 30, 'end_date', quota_start + 50, 'is_priority', true));
+  perform public.save_booking(null, actor, jsonb_build_object('start_date', quota_start + 30, 'end_date', quota_start + 51, 'is_priority', true));
   begin
-    perform public.save_booking(null, actor, jsonb_build_object('start_date', quota_start + 60, 'end_date', quota_start + 60, 'is_priority', true));
+    perform public.save_booking(null, actor, jsonb_build_object('start_date', quota_start + 60, 'end_date', quota_start + 61, 'is_priority', true));
     raise exception 'Expected pending quota rejection';
   exception when raise_exception then
     if sqlerrm not like 'Diese Buchung überschreitet deine verfügbare P-Zeit.%' then raise; end if;

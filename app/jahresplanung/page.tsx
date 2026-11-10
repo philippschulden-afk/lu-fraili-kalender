@@ -1,10 +1,11 @@
-import { addDays, format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import Link from "next/link";
 import { PageShell, requireProfile } from "@/components/page-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { formatGermanDate, formatGermanRange } from "@/lib/date-format";
-import { calculateBookingDays, getPriorityDaysUsed } from "@/lib/rules";
+import { getPriorityDaysUsed } from "@/lib/rules";
+import { calculateFreePeriods } from "@/lib/planning";
 import type { Booking, FamilyParty, PriorityDayForfeiture } from "@/lib/types";
 
 const months = Array.from({ length: 12 }, (_, index) => index);
@@ -45,7 +46,7 @@ export default async function JahresplanungPage({
   const bookings = bookingsData ?? [];
   const familyParties = familyPartiesData ?? [];
   const forfeitures = forfeituresData ?? [];
-  const freePeriods = calculateFreePeriods(bookings, yearStart, yearEnd);
+  const freePeriods = calculateFreePeriods(bookings, yearStart, `${selectedYear + 1}-01-01`);
   const nextStays = bookings
     .filter((booking) => booking.end_date >= todayIso && ["angefragt", "bestaetigt", "klaerung"].includes(booking.status))
     .sort((a, b) => a.start_date.localeCompare(b.start_date))
@@ -90,6 +91,7 @@ export default async function JahresplanungPage({
 
       <section className="mt-8 rounded-lg border border-teal-100 bg-white p-5 shadow-sm">
         <h2 className="text-2xl font-bold text-teal-950">P-Tage {selectedYear}</h2>
+        <p className="mt-2 text-gray-700">Ein P-Tag entspricht einer Übernachtung. An- und Abreise zählen zusammen als ein Tag.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {familyParties.length ? (
             familyParties.map((party) => {
@@ -130,6 +132,7 @@ export default async function JahresplanungPage({
 
       <section className="mt-8">
         <h2 className="text-2xl font-bold text-teal-950">Freie Zeiträume</h2>
+        <p className="mt-2 text-gray-700">Mindestens 7 Übernachtungen, jeweils von Anreise bis Abreise.</p>
         <div className="mt-4 rounded-lg border border-teal-100 bg-white p-5 shadow-sm">
           {freePeriods.length ? (
             <ul className="space-y-2 text-lg">
@@ -208,50 +211,6 @@ function MonthBookingEntry({ booking }: { booking: Booking }) {
       </div>
     </div>
   );
-}
-
-function calculateFreePeriods(bookings: Booking[], yearStart: string, yearEnd: string) {
-  const confirmedRanges = bookings
-    .filter((booking) => booking.status === "bestaetigt")
-    .map((booking) => ({
-      start: booking.start_date < yearStart ? yearStart : booking.start_date,
-      end: booking.end_date > yearEnd ? yearEnd : booking.end_date
-    }))
-    .filter((range) => range.start <= range.end)
-    .sort((a, b) => a.start.localeCompare(b.start));
-
-  const mergedRanges: Array<{ start: string; end: string }> = [];
-  for (const range of confirmedRanges) {
-    const previous = mergedRanges.at(-1);
-    if (!previous) {
-      mergedRanges.push({ ...range });
-      continue;
-    }
-
-    const dayAfterPrevious = toDateOnlyIso(addDays(parseISO(previous.end), 1));
-    if (range.start <= dayAfterPrevious) {
-      if (range.end > previous.end) previous.end = range.end;
-    } else {
-      mergedRanges.push({ ...range });
-    }
-  }
-
-  const freePeriods: Array<{ start: string; end: string }> = [];
-  let cursor = yearStart;
-  for (const range of mergedRanges) {
-    const freeEnd = toDateOnlyIso(addDays(parseISO(range.start), -1));
-    addFreePeriodIfLargeEnough(freePeriods, cursor, freeEnd);
-    cursor = toDateOnlyIso(addDays(parseISO(range.end), 1));
-  }
-  addFreePeriodIfLargeEnough(freePeriods, cursor, yearEnd);
-
-  return freePeriods;
-}
-
-function addFreePeriodIfLargeEnough(periods: Array<{ start: string; end: string }>, start: string, end: string) {
-  if (start <= end && calculateBookingDays(start, end) >= 7) {
-    periods.push({ start, end });
-  }
 }
 
 function overlapsRange(aStart: string, aEnd: string, bStart: string, bEnd: string) {

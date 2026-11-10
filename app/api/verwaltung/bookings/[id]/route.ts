@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getSchlichterContext } from "@/lib/schlichter";
 import { saveBooking, bookingSaveError } from "@/lib/booking-store";
 import { notifyBookingSave } from "@/lib/booking-notifications";
-import { calculateBookingDays, getTotalPriorityDaysUsedIncludingForfeitures, validatePriorityQuota, validateMaxSinglePriorityBooking } from "@/lib/rules";
-import type { Booking, BookingStatus, PriorityDayForfeiture } from "@/lib/types";
+import { calculateBookingDays } from "@/lib/rules";
+import type { Booking, BookingStatus } from "@/lib/types";
 
 const statuses: BookingStatus[] = ["angefragt", "bestaetigt", "klaerung", "storniert", "abgelehnt"];
 
@@ -27,11 +27,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const bookings = (data ?? []) as Booking[];
   const previous = bookings.find((booking) => booking.id === id);
   if (!previous) return NextResponse.json({ error: "Die Buchung wurde nicht gefunden." }, { status: 404 });
-  const { data: forfeitures, error: forfeitureError } = await admin.from("priority_day_forfeitures").select("*");
-  if (forfeitureError) return NextResponse.json({ error: "Die P-Tage konnten nicht geprüft werden." }, { status: 500 });
-  const used = getTotalPriorityDaysUsedIncludingForfeitures(bookings.filter((booking) => booking.id !== id),
-    (forfeitures ?? []) as PriorityDayForfeiture[], partyId, Number(start.slice(0, 4)));
-  const override = Boolean(body.is_priority) && (!validatePriorityQuota({ requestedDays: days, usedDays: used }).valid || !validateMaxSinglePriorityBooking(days).valid);
   const { result, error } = await saveBooking(admin, {
     bookingId: id, actorId: context.user!.id, management: true, expectedUpdatedAt: previous.updated_at,
     changes: {
@@ -44,17 +39,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const failure = bookingSaveError(error);
     return NextResponse.json({ error: failure.error }, { status: failure.status });
   }
-  if (override && result.changed) {
-    await admin.from("booking_events").insert({ booking_id: id, created_by: context.user!.id,
-      event_type: "schlichter_override", message: "Diese Änderung überschreibt die normale Regelprüfung für P-Tage." });
-  }
   await notifyBookingSave(admin, result, context.user!.id, { previous });
   const { data: updatedForfeitures, error: forfeituresReadError } = await admin.from("priority_day_forfeitures").select("*").eq("booking_id", id);
   return NextResponse.json({
     booking: result.booking,
     forfeitures: forfeituresReadError ? undefined : updatedForfeitures ?? [],
-    message: result.new_request ? "Änderung wurde als neue Anfrage gesendet." : "Änderung gespeichert.",
-    warning: forfeituresReadError ? "Änderung gespeichert. Die P-Tage konnten nicht neu geladen werden. Bitte lade die Seite erneut." : override ? "Diese Änderung überschreibt die normale Regelprüfung." : null
+    message: result.booking.status === "klaerung" ? "Änderung gespeichert. Klärung erforderlich – bitte mit den betroffenen Parteien abstimmen." : result.new_request ? "Änderung wurde als neue Anfrage gesendet." : "Änderung gespeichert.",
+    warning: forfeituresReadError ? "Änderung gespeichert. Die P-Tage konnten nicht neu geladen werden. Bitte lade die Seite erneut." : null
   });
 }
 

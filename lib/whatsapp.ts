@@ -28,13 +28,16 @@ export function buildWhatsAppMessage(input: WhatsAppBookingShareInput) {
     const displacementHint = input.priorityDisplacementPartyName
       ? `\n\nHinweis: Diese P-Zeit überschneidet sich mit einer normalen Buchung von ${input.priorityDisplacementPartyName}. Bitte stimmt euch dazu ab.`
       : "";
+    const nextStep = input.status === "klaerung"
+      ? "Klärung erforderlich. Bitte stimmt euch mit den Schlichtern ab. Es erfolgt keine automatische Bestätigung."
+      : "Falls niemand widerspricht, wird die Buchung in 3 Tagen automatisch bestätigt.";
     return `Neue Buchungsanfrage Lu Fraili
 
 ${input.familyPartyName} möchte vom ${range} nach Lu Fraili.
 
 P-Zeit: ${priority}
 
-Falls niemand widerspricht, wird die Buchung in 3 Tagen automatisch bestätigt.${displacementHint}`;
+${nextStep}${displacementHint}`;
   }
 
   if (input.type === "confirmed") {

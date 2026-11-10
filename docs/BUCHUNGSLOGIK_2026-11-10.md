@@ -30,4 +30,4 @@ Die Migration prüft die erwartete Version der bisherigen Speicherfunktion und b
 
 Die SQL-Tests verwenden Transaktionen mit abschließendem Rollback. Sie gehören in eine isolierte Testdatenbank, nicht in die produktive Familienbelegung.
 
-Nicht verändert: Benachrichtigungsbeginn, Ablauf einer Verdrängung, inklusive Tageszählung und bestehende Schlichter-Ausnahmen für das P-Kontingent. Diese Familienentscheidungen bleiben offen.
+Dieser Bericht beschreibt den ersten Korrekturschritt. Die anschließend beschlossenen Regeln zu Übernachtungen, Verdrängung und gleichen P-Grenzen für Schlichter sind in `UEBERNACHTUNGEN_UND_KLAERUNG_2026-11-10.md` dokumentiert. Der Benachrichtigungsbeginn bleibt bis zur Einrichtung einer verlässlichen Benachrichtigung unverändert.
